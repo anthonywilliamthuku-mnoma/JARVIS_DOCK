@@ -45,4 +45,21 @@ Format: decision, alternatives considered, reason. Newest entries go at the bott
 ## D-009: Default model is the small local one
 - **Decision:** Ship with `qwen2.5-0.5b-heretic:latest` as the default, configurable in `%APPDATA%/LEON/config.toml` or via `LEON_MODEL`.
 - **Reason:** Measured on the target PC (Intel HD Graphics 520, 8 GB RAM, CPU only): the chosen 4B heretic model (`Q4_K_M`, 3.1 GB on disk) worked but produced 8 tokens in about 180 seconds, which makes conversation impractical. The 0.5B model answers in seconds. The 4B stays installed so it can be selected when more memory or better hardware is available.
-- **Consequence:** Answer quality on the default model is modest, and its tool calling is unverified. That is why the dock does not yet hand the model any tools: a wrong tool call is worse than no tool call.
+- **Consequence:** Answer quality on the default model is modest. Its tool calling was verified on 2026-11-10: asked for free disk space it called `system_report` and answered with the real figure, so tools are handed to it.
+
+## D-010: Ground every turn in live facts instead of trusting the model
+- **Decision:** Each request sends a system prompt containing a block read from Windows at call time: local time with UTC offset, time zone, region country code, OS build, processor count, memory use and free disk space (`leond/facts.py`).
+- **Alternatives:** Let the model answer from training data, or add a lookup skill for every fact.
+- **Reason:** A 0.5B model cannot know today's date, this machine's time zone or how full the disk is. Injection makes "what time is it" correct on any model, and it costs one short string per request. The lookup skills (`local_time`, `local_place`, `system_report`) stay for when the model wants the detail explicitly.
+- **Note:** The region reports what Windows is set to, which may not match the time zone (this PC reports country code `US` with `E. Africa Standard Time`). Facts are reported as-is, never corrected silently.
+
+## D-011: Skills run through policy and approval, never straight from the model
+- **Decision:** `leond/skills.py` defines each skill with a permission tier and a JSON schema. `leond/agent.py` checks `policy.check` before anything runs; T2 and above raise an Allow / Deny card in the island and wait up to 120 seconds, and an unanswered card is a denial.
+- **Reason:** The model is untrusted input (spec §4). It may only name a skill and supply arguments; core decides. `open_app` launches only from a fixed allowlist, so a slip cannot become "start this executable". Only the risky argument is shown to the policy engine, so a note about "deleting old files" is not mistaken for a delete command.
+- **Bounded:** At most three model steps per turn, so a tool loop cannot run away.
+- **Audited:** Every call and decision is written to the audit log by skill name and outcome, never with its arguments.
+
+## D-012: The dock is an island pinned to the top of the screen
+- **Decision:** A 520-pixel-wide transparent window at the top centre, 60 pixels tall when collapsed and 580 when open. The page switches between the pill and the conversation; Python resizes and re-centres the native window on toggle.
+- **Reason:** Matches the island shape the user asked for, and keeps the window small enough that an always-on-top surface costs almost nothing. Only opacity and transform animate, so it stays smooth on integrated graphics.
+- **Trade-off:** A transparent window is composited by the desktop, which is slightly dearer than an opaque one; `transparent=False` is the fallback if a machine misbehaves. There is still no global summon hotkey, because pywebview exposes no API for one (a Win32 `RegisterHotKey` wrapper is the next step).

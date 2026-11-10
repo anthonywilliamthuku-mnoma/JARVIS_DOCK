@@ -1,33 +1,56 @@
 /* LEON dock page.
-   The page never talks to the network. It only calls the four methods Python
-   exposes on window.pywebview.api, and Python calls back into window.leon. */
+   The page never touches the network. It calls the methods Python exposes on
+   window.pywebview.api, and Python calls back into window.leon. */
 
 const el = {
+  island: document.getElementById("island"),
+  pill: document.getElementById("pill"),
   thread: document.getElementById("thread"),
   intro: document.getElementById("intro"),
   input: document.getElementById("input"),
   form: document.getElementById("composer"),
   send: document.getElementById("send"),
   stop: document.getElementById("stop"),
-  thinking: document.getElementById("thinking"),
   stats: document.getElementById("stats"),
+  state: document.getElementById("state"),
   model: document.getElementById("model"),
   dot: document.getElementById("dot"),
-  minimise: document.getElementById("minimise"),
-  close: document.getElementById("close"),
+  toggle: document.getElementById("toggle"),
+  approval: document.getElementById("approval"),
+  askWhy: document.getElementById("askWhy"),
+  askDetail: document.getElementById("askDetail"),
+  allow: document.getElementById("allow"),
+  deny: document.getElementById("deny"),
 };
 
-let bridge = null;
-let current = null; // the assistant bubble being streamed
+let current = null;   // assistant bubble being streamed
 let busy = false;
+let open = false;
+let ticket = null;
 
 function api() {
   return window.pywebview && window.pywebview.api ? window.pywebview.api : null;
 }
 
+/* island ---------------------------------------------------------------- */
+
+async function setOpen(next) {
+  open = next;
+  document.body.classList.toggle("open", next);
+  await api()?.set_open(next);
+  if (next) el.input.focus();
+}
+
+el.pill.addEventListener("click", (event) => {
+  if (event.target === el.toggle) return;
+  if (!open) setOpen(true);
+});
+el.toggle.addEventListener("click", () => setOpen(!open));
+
+/* helpers --------------------------------------------------------------- */
+
 function setBusy(value) {
   busy = value;
-  el.thinking.hidden = !value;
   el.dot.classList.toggle("busy", value);
   el.send.disabled = value;
   el.stop.hidden = !value;
@@ -48,6 +71,19 @@ function addTurn(kind, text) {
   return bubble;
 }
 
+function addNote(text) {
+  const note = document.createElement("div");
+  note.className = "note";
+  note.textContent = text;
+  el.thread.appendChild(note);
+  follow();
+}
+
+function closeApproval() {
+  ticket = null;
+  el.approval.hidden = true;
+}
+
 /* handlers Python calls -------------------------------------------------- */
 
 window.leon = {
@@ -58,6 +94,10 @@ window.leon = {
     follow();
   },
 
+  state(text) {
+    el.state.textContent = text;
+  },
+
   done(payload) {
     if (current) {
       current.classList.remove("caret");
@@ -65,6 +105,7 @@ window.leon = {
     }
     current = null;
     setBusy(false);
+    el.state.textContent = "ready";
     if (payload && payload.cancelled) {
       el.stats.textContent = "stopped";
     } else if (payload && payload.stats) {
@@ -72,7 +113,6 @@ window.leon = {
       const first = s.first_ms == null ? "" : `${s.first_ms} ms to first word · `;
       el.stats.textContent = `${first}${s.per_second} tok/s · ${s.seconds}s`;
     }
-    el.input.focus();
   },
 
   error(message) {
@@ -80,20 +120,32 @@ window.leon = {
       current.remove();
       current = null;
     }
-    const bubble = addTurn("leon error", message);
-    bubble.dataset.error = "1";
+    addTurn("leon error", message);
     setBusy(false);
+    el.state.textContent = "ready";
     el.stats.textContent = "could not answer";
-    el.input.focus();
   },
 
   busy(value) {
     setBusy(Boolean(value));
     if (value) {
       if (!current) current = addTurn("leon", "");
-      el.stats.textContent = "thinking…";
+      el.stats.textContent = "working…";
       follow();
     }
+  },
+
+  ask(request) {
+    ticket = request.id;
+    el.askWhy.textContent = `${request.reason} · ${request.name}`;
+    el.askDetail.textContent = request.detail;
+    el.approval.hidden = false;
+    setOpen(true);
+    follow();
+  },
+
+  askClosed() {
+    closeApproval();
   },
 };
 
@@ -108,7 +160,8 @@ async function send() {
   resize();
   current = addTurn("leon", "");
   setBusy(true);
-  el.stats.textContent = "thinking…";
+  el.state.textContent = "thinking…";
+  el.stats.textContent = "working…";
 
   if (!call) {
     window.leon.error("The dock is not connected to LEON.");
@@ -140,20 +193,33 @@ el.input.addEventListener("keydown", (event) => {
   }
 });
 
+el.allow.addEventListener("click", () => {
+  if (ticket) api()?.answer(ticket, true);
+  closeApproval();
+});
+
+el.deny.addEventListener("click", () => {
+  if (ticket) api()?.answer(ticket, false);
+  closeApproval();
+});
+
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && busy) {
+  if (event.key !== "Escape") return;
+  if (ticket) {
+    api()?.answer(ticket, false);
+    closeApproval();
+  } else if (busy) {
     api()?.stop();
-    el.stats.textContent = "stopping…";
+    el.state.textContent = "stopping…";
+  } else if (open) {
+    setOpen(false);
   }
 });
 
 el.stop.addEventListener("click", () => {
   api()?.stop();
-  el.stats.textContent = "stopping…";
+  el.state.textContent = "stopping…";
 });
-
-el.minimise.addEventListener("click", () => api()?.minimise());
-el.close.addEventListener("click", () => api()?.close());
 
 /* startup ---------------------------------------------------------------- */
 

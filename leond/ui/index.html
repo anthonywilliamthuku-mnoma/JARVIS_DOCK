@@ -7,47 +7,54 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <main class="dock" id="dock">
-      <header class="bar">
+    <main class="island" id="island">
+      <header class="pill" id="pill" title="Click to open LEON">
         <span class="dot" id="dot" aria-hidden="true"></span>
         <span class="wordmark">LEON</span>
-        <span class="model" id="model">connecting…</span>
+        <span class="state" id="state">ready</span>
         <span class="spacer"></span>
-        <button class="ghost" id="minimise" title="Minimise" aria-label="Minimise">–</button>
-        <button class="ghost" id="close" title="Close" aria-label="Close">×</button>
+        <span class="model" id="model">connecting…</span>
+        <button class="ghost" id="toggle" aria-label="Open or close">⌄</button>
       </header>
 
-      <section class="thread" id="thread" aria-live="polite">
-        <article class="intro" id="intro">
-          <h1>Hello, I am LEON.</h1>
-          <p>
-            I run on this PC, on your own model. Ask me anything — my reply is
-            typed out as the model produces it.
-          </p>
-        </article>
-      </section>
-
-      <footer class="foot">
-        <div class="thinking" id="thinking" hidden>
-          <i></i><i></i><i></i>
+      <section class="panel" id="panel">
+        <div class="thread" id="thread" aria-live="polite">
+          <article class="intro" id="intro">
+            <h1>Hello, I am LEON.</h1>
+            <p>
+              I run on this PC, on your own model. Ask me the time, the date,
+              your location or how the machine is doing — those come from
+              Windows, not from me guessing.
+            </p>
+          </article>
         </div>
-        <div class="stats" id="stats">ready</div>
-        <form class="composer" id="composer" autocomplete="off">
-          <textarea
-            id="input"
-            rows="1"
-            placeholder="Ask LEON…"
-            spellcheck="false"
-            aria-label="Message LEON"
-          ></textarea>
-          <button class="send" id="send" type="submit" title="Send" aria-label="Send">
-            ↑
-          </button>
-          <button class="stop" id="stop" type="button" title="Stop (Esc)" aria-label="Stop" hidden>
-            ■
-          </button>
-        </form>
-      </footer>
+
+        <div class="approval" id="approval" hidden>
+          <p class="why" id="askWhy"></p>
+          <pre class="detail" id="askDetail"></pre>
+          <div class="row">
+            <button class="deny" id="deny" type="button">Deny</button>
+            <button class="allow" id="allow" type="button">Allow</button>
+          </div>
+        </div>
+
+        <footer class="foot">
+          <div class="stats" id="stats">ready</div>
+          <form class="composer" id="composer" autocomplete="off">
+            <textarea
+              id="input"
+              rows="1"
+              placeholder="Ask LEON…"
+              spellcheck="false"
+              aria-label="Message LEON"
+            ></textarea>
+            <button class="send" id="send" type="submit" title="Send" aria-label="Send">↑</button>
+            <button class="stop" id="stop" type="button" title="Stop (Esc)" aria-label="Stop" hidden>
+              ■
+            </button>
+          </form>
+        </footer>
+      </section>
     </main>
     <script src="app.js"></script>
   </body>

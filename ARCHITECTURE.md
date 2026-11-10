@@ -6,9 +6,10 @@ what it is doing. Admin work goes through a separate elevated helper that starts
 only after a real Windows UAC prompt.
 
 Status: Phase 0 done, Phase 1 in progress. The dock exists: one Python process
-hosting a frameless always-on-top WebView2 window (see D-008), with the brain,
-config, policy skeleton and audit log behind it. Skills, approvals and the
-elevated helper are still target design.
+hosting a transparent, always-on-top island window at the top of the screen
+(D-008, D-012), with live facts (D-010), a policy-gated skill layer and approval
+cards (D-011), the streaming brain and the audit log behind it. The elevated
+helper is still target design.
 
 ## Components
 
@@ -31,8 +32,10 @@ Dock UI (HTML/CSS/JS)  <------- in-process bridge, no port -------->  leond (cor
 | Component | Phase | Notes |
 |---|---|---|
 | `leond` core | 1 | Python 3.12, typed, stdlib HTTP to the local model |
-| Skill framework | 2 | Progressive disclosure, tiers enforced by core |
-| Dock | 1 | pywebview + vanilla HTML/CSS/JS, frameless, always on top (D-008) |
+| Facts | 1 | Live Windows readings injected into every turn (D-010) |
+| Agent loop | 1 | At most three steps: tool calls -> policy -> answer (D-011) |
+| Skill framework | 1-2 | Registry with tiers and JSON schemas; progressive disclosure later |
+| Dock | 1 | pywebview island + vanilla HTML/CSS/JS (D-008, D-012) |
 | `leon-elevated` | 4 | Allowlisted, schema-validated operations only |
 
 ## Privilege model
@@ -53,7 +56,8 @@ enforced by core.
 
 These sequence diagrams are added with the phase that implements each flow.
 
-- **Normal task**: user request -> plan -> execute tools -> verify -> report. (Phase 1-2)
+- **Normal task** (shipped): user request -> facts injected -> model asks for a
+  skill -> policy check -> (approval card for T2+) -> skill runs -> model answers.
 - **Approval**: T2/T3 action -> approval sheet (exact action, reason, rollback) -> decision -> audit entry. (Phase 2, 5)
 - **Elevated task**: approval -> UAC -> `leon-elevated` starts -> allowlisted ops -> idle timeout -> helper exits. (Phase 4)
 - **Kill switch**: hotkey or button -> cancel queued tasks -> stop in-flight actions -> revoke elevation. (Phase 2, 5)

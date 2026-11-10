@@ -1,13 +1,14 @@
-"""The dock: one frameless window with LEON inside it.
+"""The dock: a small island pinned to the top of the screen.
 
-The window is a WebView2 surface rendering ``leond/ui``. Python owns the model
-call, so the page never sees a token, a key or a socket: it can only call the
-four methods exposed below. Every finished turn is written to the audit log.
+Collapsed it is a pill that shows what LEON is doing; opening it grows the same
+window downwards into the conversation. Python owns the model call and every
+skill, so the page can only call the handful of methods exposed below.
 """
 
 from __future__ import annotations
 
 import contextlib
+import itertools
 import json
 import threading
 import time
@@ -17,12 +18,18 @@ from typing import Any
 import webview
 
 from leond import __version__
+from leond.agent import Agent, Hooks
 from leond.audit import AuditLog
-from leond.brain import Brain, BrainError, Message, trim
+from leond.brain import Brain, BrainError, Message
 from leond.config import Config, config_dir
 
 UI_DIR = Path(__file__).parent / "ui"
+WIDTH = 520
+COLLAPSED_H = 60
+EXPANDED_H = 580
+TOP_MARGIN = 10
 FLUSH_S = 0.05
+APPROVAL_TIMEOUT_S = 120.0
 
 
 def _js(value: object) -> str:
@@ -36,11 +43,16 @@ class DockApi:
         self._cfg = cfg
         self._brain = Brain(cfg)
         self._audit = AuditLog(config_dir() / "audit.jsonl")
+        self._agent = Agent(cfg, self._brain, self._audit)
         self._history: list[Message] = []
         self._cancel = threading.Event()
         self._worker: threading.Thread | None = None
         self._window: webview.Window | None = None
         self._lock = threading.Lock()
+        self._open = False
+        self._tickets = itertools.count(1)
+        self._waiting: dict[str, threading.Event] = {}
+        self._answers: dict[str, bool] = {}
 
     def attach(self, window: webview.Window) -> None:
         self._window = window
@@ -72,54 +84,100 @@ class DockApi:
 
     def stop(self) -> dict[str, Any]:
         self._cancel.set()
+        for token, event in list(self._waiting.items()):
+            self._answers[token] = False
+            event.set()
         self._audit.write("chat", "user pressed stop", "cancelled")
         return {"ok": True}
 
-    def close(self) -> None:
-        if self._window is not None:
-            self._window.destroy()
+    def answer(self, ticket: str, allowed: bool) -> dict[str, Any]:
+        """The user pressed Allow or Deny on the approval card."""
+        self._answers[str(ticket)] = bool(allowed)
+        event = self._waiting.get(str(ticket))
+        if event is not None:
+            event.set()
+        self._audit.write("approval", str(ticket), "allowed" if allowed else "denied")
+        return {"ok": True}
+
+    def set_open(self, opened: bool) -> dict[str, Any]:
+        self._resize(bool(opened))
+        return {"ok": True}
 
     def minimise(self) -> None:
         if self._window is not None:
             self._window.minimize()
 
-    # -- the turn itself -----------------------------------------------------
+    def close(self) -> None:
+        if self._window is not None:
+            self._window.destroy()
+
+    # -- window --------------------------------------------------------------
+
+    def _resize(self, opened: bool) -> None:
+        if self._window is None:
+            return
+        self._open = opened
+        height = EXPANDED_H if opened else COLLAPSED_H
+        with contextlib.suppress(Exception):
+            screen = webview.screens[0] if webview.screens else None
+            width = min(WIDTH, getattr(screen, "width", WIDTH))
+            x = max(0, ((getattr(screen, "width", WIDTH)) - width) // 2)
+            self._window.resize(width, height)
+            self._window.move(x, TOP_MARGIN)
+
+    # -- the turn ------------------------------------------------------------
 
     def _emit(self, function: str, payload: object) -> None:
         window = self._window
         if window is None:
             return
-        # The window can vanish mid-turn; a lost update must never kill the worker.
         with contextlib.suppress(Exception):
             window.evaluate_js(f"window.leon && window.leon.{function}({_js(payload)})")
 
+    def _ask(self, name: str, detail: str, reason: str) -> bool:
+        ticket = str(next(self._tickets))
+        event = threading.Event()
+        self._waiting[ticket] = event
+        self._answers[ticket] = False
+        self._resize(True)
+        self._emit("ask", {"id": ticket, "name": name, "detail": detail, "reason": reason})
+        answered = event.wait(APPROVAL_TIMEOUT_S)
+        approved = self._answers.pop(ticket, False)
+        self._waiting.pop(ticket, None)
+        self._emit("askClosed", ticket)
+        if not answered:
+            self._audit.write("approval", name, "timed out")
+        return approved
+
     def _answer(self, message: str) -> None:
-        self._history.append(Message("user", message))
-        trimmed = trim(self._history, self._cfg.context)
         started = time.perf_counter()
         first: float | None = None
-        pieces: list[str] = []
         pending: list[str] = []
         last_flush = 0.0
+
+        def on_text(piece: str) -> None:
+            nonlocal first, last_flush
+            if first is None:
+                first = time.perf_counter()
+            pending.append(piece)
+            now = time.perf_counter()
+            if now - last_flush >= FLUSH_S:
+                self._emit("delta", "".join(pending))
+                pending.clear()
+                last_flush = now
+
+        hooks = Hooks(
+            on_text=on_text,
+            on_state=lambda text: self._emit("state", text),
+            ask=self._ask,
+        )
+
         try:
             self._emit("busy", True)
-            for delta in self._brain.stream(trimmed, cancel=self._cancel):
-                if first is None:
-                    first = time.perf_counter()
-                pieces.append(delta)
-                pending.append(delta)
-                now = time.perf_counter()
-                if now - last_flush >= FLUSH_S:
-                    self._emit("delta", "".join(pending))
-                    pending.clear()
-                    last_flush = now
+            reply = self._agent.answer(self._history, message, hooks, self._cancel)
             if pending:
                 self._emit("delta", "".join(pending))
-
-            reply = "".join(pieces).strip()
             if self._cancel.is_set():
-                if reply:
-                    self._history.append(Message("assistant", reply))
                 self._audit.write("chat", f"{len(reply)} chars", "stopped")
                 self._emit("done", {"cancelled": True, "text": reply, "stats": None})
                 return
@@ -127,8 +185,6 @@ class DockApi:
                 self._audit.write("chat", "empty reply", "empty")
                 self._emit("error", "the model returned an empty reply")
                 return
-
-            self._history.append(Message("assistant", reply))
             elapsed = time.perf_counter() - started
             tokens = max(1, len(reply) // 4)
             stats = {
@@ -143,30 +199,36 @@ class DockApi:
             self._audit.write("chat", str(exc)[:120], "error")
             self._emit("error", str(exc))
         except Exception as exc:  # noqa: BLE001 - the UI must always be told
-            self._audit.write("chat", f"{type(exc).__name__}", "error")
+            self._audit.write("chat", type(exc).__name__, "error")
             self._emit("error", f"unexpected problem: {type(exc).__name__}")
         finally:
             self._emit("busy", False)
 
 
 def run(cfg: Config) -> int:
-    """Open the dock and block until it closes."""
+    """Open the island and block until it closes."""
     api = DockApi(cfg)
+    screen = webview.screens[0] if webview.screens else None
+    width = min(WIDTH, getattr(screen, "width", WIDTH))
+    height = getattr(screen, "height", 1080)
     window = webview.create_window(
         "LEON",
         str(UI_DIR / "index.html"),
         js_api=api,
-        width=cfg.width,
-        height=cfg.height,
-        min_size=(360, 460),
+        width=width,
+        height=COLLAPSED_H,
+        x=max(0, (getattr(screen, "width", WIDTH) - width) // 2),
+        y=TOP_MARGIN,
         frameless=True,
         easy_drag=True,
-        on_top=cfg.on_top,
-        background_color="#0B0B10",
-        resizable=True,
+        on_top=True,
+        transparent=True,
+        background_color="#000000",
+        resizable=False,
     )
     if window is None:
         raise RuntimeError("the dock window could not be created")
     api.attach(window)
+    print(f"LEON dock: {width}x{COLLAPSED_H} on a {width}x{height} screen", flush=True)
     webview.start(debug=False)
     return 0
