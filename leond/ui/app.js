@@ -1,9 +1,13 @@
 /* LEON dock page.
    The page never touches the network. It calls the methods Python exposes on
-   window.pywebview.api, and Python calls back into window.leon. */
+   window.pywebview.api, and Python calls back into window.leon.
+
+   The shell follows Nook 0.4.2 (MIT): the pill is the whole window, hovering
+   opens it after a short debounce, leaving folds it after a grace period, and
+   a click pins it open. */
 
 const el = {
-  island: document.getElementById("island"),
+  shell: document.getElementById("shell"),
   pill: document.getElementById("pill"),
   thread: document.getElementById("thread"),
   intro: document.getElementById("intro"),
@@ -13,20 +17,26 @@ const el = {
   stop: document.getElementById("stop"),
   stats: document.getElementById("stats"),
   state: document.getElementById("state"),
-  model: document.getElementById("model"),
+  clock: document.getElementById("clock"),
   dot: document.getElementById("dot"),
   toggle: document.getElementById("toggle"),
   approval: document.getElementById("approval"),
+  chips: document.getElementById("chips"),
   askWhy: document.getElementById("askWhy"),
   askDetail: document.getElementById("askDetail"),
   allow: document.getElementById("allow"),
   deny: document.getElementById("deny"),
 };
 
-let current = null;   // assistant bubble being streamed
+const HOVER_OPEN_MS = 120; // Nook's hover debounce
+const HOVER_CLOSE_MS = 250; // Nook's leave grace
+
+let current = null; // assistant bubble being streamed
 let busy = false;
 let open = false;
+let pinned = false; // clicked open: stays until Esc or another click
 let ticket = null;
+let timer = null;
 
 function api() {
   return window.pywebview && window.pywebview.api ? window.pywebview.api : null;
@@ -35,17 +45,79 @@ function api() {
 /* island ---------------------------------------------------------------- */
 
 async function setOpen(next) {
+  if (open === next) return;
   open = next;
   document.body.classList.toggle("open", next);
   await api()?.set_open(next);
   if (next) el.input.focus();
+  else el.input.blur();
 }
 
+function canFold() {
+  if (!open || pinned || busy || ticket) return false;
+  if (document.activeElement === el.input) return false;
+  return !el.input.value.trim();
+}
+
+function hoverOpen() {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    if (!open) setOpen(true);
+  }, HOVER_OPEN_MS);
+}
+
+function hoverClose() {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    if (canFold()) {
+      pinned = false;
+      setOpen(false);
+    }
+  }, HOVER_CLOSE_MS);
+}
+
+function togglePin() {
+  clearTimeout(timer);
+  if (pinned && open) {
+    pinned = false;
+    if (canFold()) setOpen(false);
+    return;
+  }
+  pinned = true;
+  setOpen(true);
+}
+
+el.pill.addEventListener("mouseenter", hoverOpen);
+el.pill.addEventListener("mouseleave", () => {
+  if (!open) clearTimeout(timer);
+});
+el.shell.addEventListener("mouseenter", () => clearTimeout(timer));
+el.shell.addEventListener("mouseleave", hoverClose);
 el.pill.addEventListener("click", (event) => {
   if (event.target === el.toggle) return;
-  if (!open) setOpen(true);
+  togglePin();
 });
-el.toggle.addEventListener("click", () => setOpen(!open));
+el.toggle.addEventListener("click", (event) => {
+  event.stopPropagation();
+  togglePin();
+});
+
+/* clock ----------------------------------------------------------------- */
+
+function tick() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  el.clock.textContent = `${hours}:${minutes}`;
+  el.clock.title = now.toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  // Wake on the minute, not every second: the idle pill costs nothing.
+  setTimeout(tick, 60000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 20);
+}
 
 /* helpers --------------------------------------------------------------- */
 
@@ -69,14 +141,6 @@ function addTurn(kind, text) {
   el.thread.appendChild(bubble);
   follow();
   return bubble;
-}
-
-function addNote(text) {
-  const note = document.createElement("div");
-  note.className = "note";
-  note.textContent = text;
-  el.thread.appendChild(note);
-  follow();
 }
 
 function closeApproval() {
@@ -140,6 +204,7 @@ window.leon = {
     el.askWhy.textContent = `${request.reason} · ${request.name}`;
     el.askDetail.textContent = request.detail;
     el.approval.hidden = false;
+    pinned = true;
     setOpen(true);
     follow();
   },
@@ -158,6 +223,8 @@ async function send() {
   addTurn("me", text);
   el.input.value = "";
   resize();
+  pinned = true;
+  if (!open) await setOpen(true);
   current = addTurn("leon", "");
   setBusy(true);
   el.state.textContent = "thinking…";
@@ -182,6 +249,13 @@ function resize() {
 
 el.form.addEventListener("submit", (event) => {
   event.preventDefault();
+  send();
+});
+
+el.chips?.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-say]");
+  if (!button) return;
+  el.input.value = button.dataset.say;
   send();
 });
 
@@ -212,6 +286,7 @@ document.addEventListener("keydown", (event) => {
     api()?.stop();
     el.state.textContent = "stopping…";
   } else if (open) {
+    pinned = false;
     setOpen(false);
   }
 });
@@ -223,23 +298,24 @@ el.stop.addEventListener("click", () => {
 
 /* startup ---------------------------------------------------------------- */
 
+tick();
+
 function ready() {
   const call = api();
   if (!call) {
-    el.model.textContent = "no bridge";
+    el.state.textContent = "no bridge";
     el.stats.textContent = "Open the dock with `leon` to connect.";
     return;
   }
   call
     .hello()
     .then((info) => {
-      el.model.textContent = info.model;
-      el.model.title = `${info.model} at ${info.endpoint}`;
       if (info.accent) document.documentElement.style.setProperty("--accent", info.accent);
-      el.stats.textContent = `v${info.version} · local`;
+      el.stats.textContent = `v${info.version} · ${info.model} · local`;
+      el.stats.title = `${info.model} at ${info.endpoint}`;
     })
     .catch(() => {
-      el.model.textContent = "offline";
+      el.stats.textContent = "offline";
     });
 }
 

@@ -24,12 +24,29 @@ from leond.brain import Brain, BrainError, Message
 from leond.config import Config, config_dir
 
 UI_DIR = Path(__file__).parent / "ui"
-WIDTH = 520
-COLLAPSED_H = 60
-EXPANDED_H = 580
-TOP_MARGIN = 10
+
+# The dock itself: a 223 x 43 glass capsule at the top of the screen, sized to
+# match the reference shell. Opening it grows the same window downwards.
+WIDTH = 223
+COLLAPSED_H = 43
+EXPANDED_W = 520
+EXPANDED_H = 560
+TOP_MARGIN = 0
 FLUSH_S = 0.05
 APPROVAL_TIMEOUT_S = 120.0
+
+
+def geometry(screen_width: int, opened: bool) -> tuple[int, int, int, int]:
+    """Where the dock sits for a given screen: (x, y, width, height).
+
+    Collapsed it is exactly ``WIDTH`` x ``COLLAPSED_H``, centred on the screen
+    and flush with the top edge, so it reads as a notch. Opening it keeps the
+    same centre line and top edge and only grows downwards.
+    """
+    width = EXPANDED_W if opened else WIDTH
+    height = EXPANDED_H if opened else COLLAPSED_H
+    width = max(1, min(width, screen_width))
+    return max(0, (screen_width - width) // 2), TOP_MARGIN, width, height
 
 
 def _js(value: object) -> str:
@@ -117,13 +134,11 @@ class DockApi:
         if self._window is None:
             return
         self._open = opened
-        height = EXPANDED_H if opened else COLLAPSED_H
         with contextlib.suppress(Exception):
             screen = webview.screens[0] if webview.screens else None
-            width = min(WIDTH, getattr(screen, "width", WIDTH))
-            x = max(0, ((getattr(screen, "width", WIDTH)) - width) // 2)
+            x, y, width, height = geometry(getattr(screen, "width", 1920), opened)
             self._window.resize(width, height)
-            self._window.move(x, TOP_MARGIN)
+            self._window.move(x, y)
 
     # -- the turn ------------------------------------------------------------
 
@@ -209,16 +224,15 @@ def run(cfg: Config) -> int:
     """Open the island and block until it closes."""
     api = DockApi(cfg)
     screen = webview.screens[0] if webview.screens else None
-    width = min(WIDTH, getattr(screen, "width", WIDTH))
-    height = getattr(screen, "height", 1080)
+    x, y, width, height = geometry(getattr(screen, "width", 1920), opened=False)
     window = webview.create_window(
         "LEON",
         str(UI_DIR / "index.html"),
         js_api=api,
         width=width,
-        height=COLLAPSED_H,
-        x=max(0, (getattr(screen, "width", WIDTH) - width) // 2),
-        y=TOP_MARGIN,
+        height=height,
+        x=x,
+        y=y,
         frameless=True,
         easy_drag=True,
         on_top=True,
@@ -229,6 +243,10 @@ def run(cfg: Config) -> int:
     if window is None:
         raise RuntimeError("the dock window could not be created")
     api.attach(window)
-    print(f"LEON dock: {width}x{COLLAPSED_H} on a {width}x{height} screen", flush=True)
+    print(
+        f"LEON dock: {width}x{height} at {x},{y} "
+        f"on a {getattr(screen, 'width', 0)}x{getattr(screen, 'height', 0)} screen",
+        flush=True,
+    )
     webview.start(debug=False)
     return 0

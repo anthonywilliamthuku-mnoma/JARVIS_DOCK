@@ -6,7 +6,7 @@ what it is doing. Admin work goes through a separate elevated helper that starts
 only after a real Windows UAC prompt.
 
 Status: Phase 0 done, Phase 1 in progress. The dock exists: one Python process
-hosting a transparent, always-on-top island window at the top of the screen
+hosting a transparent, always-on-top capsule at the top of the screen
 (D-008, D-012), with live facts (D-010), a policy-gated skill layer and approval
 cards (D-011), the streaming brain and the audit log behind it. The elevated
 helper is still target design.
@@ -35,7 +35,7 @@ Dock UI (HTML/CSS/JS)  <------- in-process bridge, no port -------->  leond (cor
 | Facts | 1 | Live Windows readings injected into every turn (D-010) |
 | Agent loop | 1 | At most three steps: tool calls -> policy -> answer (D-011) |
 | Skill framework | 1-2 | Registry with tiers and JSON schemas; progressive disclosure later |
-| Dock | 1 | pywebview island + vanilla HTML/CSS/JS (D-008, D-012) |
+| Dock | 1 | pywebview: 223 x 43 glass capsule that opens into a panel, vanilla HTML/CSS/JS, shell recreated from Nook 0.4.2 (D-008, D-012) |
 | `leon-elevated` | 4 | Allowlisted, schema-validated operations only |
 
 ## Privilege model

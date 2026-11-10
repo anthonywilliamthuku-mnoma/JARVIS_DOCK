@@ -47,12 +47,23 @@ the 4B model answered 8 tokens in about 180 seconds, so it is installed but
 not usable for conversation here. The 0.5B model replies in a few seconds.
 Speed depends mostly on the CPU and on how much memory is free; no GPU is used.
 
-## The island
+## The dock
 
-The dock is a pill pinned to the top centre of the screen. Collapsed it shows
-what LEON is doing and nothing more. Click it (or the chevron) and the same
-window grows downwards into the conversation; **Esc** closes it again, and
-dragging the pill moves it.
+The dock is a glass capsule **223 × 43** pinned to the top centre of the
+screen, flush with the edge like a notch. It carries a live clock, a status dot
+and what LEON is doing, and nothing else.
+
+- **Hover** it and it opens after a 120 ms debounce; move away and it folds
+  after 250 ms.
+- **Click** it to pin it open. Click again, or press **Esc**, to fold it.
+- Open, it grows downwards into a 520 × 560 conversation panel.
+- It stays open while a reply is streaming, while you type, and while an
+  approval card is waiting — it will not fold under your hands.
+
+The shell's behaviour and look are recreated from **Nook 0.4.2** (MIT): the
+capsule-to-panel shell, hover/pin interaction, charcoal glass gradient, 1 px rim
+and top highlight, and the clock in the pill. The rendering is LEON's own
+HTML/CSS, not Nook's Rust code, so the dock stays a single Python process.
 
 ## What it does today
 
@@ -108,7 +119,7 @@ uv run pytest
 
 ## Status
 
-Phase 0 (foundations) is complete. Phase 1 (brain and core loop) is in
-progress: the model client, config, policy skeleton and audit log exist, and
-the dock is a working vertical slice. Skills, approval sheets and the elevated
-helper are still to come. See `PROGRESS.md` and `DECISIONS.md`.
+Phase 0 (foundations) is complete, and Phase 1 (brain and core loop) works:
+model client, live facts, policy-gated skills with an approval card, audit log
+and the dock shell. The elevated helper (Phase 4) is still to come. See
+`PROGRESS.md` and `DECISIONS.md`.

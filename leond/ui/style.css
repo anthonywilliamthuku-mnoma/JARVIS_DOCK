@@ -1,14 +1,18 @@
-/* Cheap on purpose: no blur filters, no large shadows, no layout animation.
-   Only opacity and transform animate, so integrated graphics stay smooth. */
+/* LEON dock, recreated from Nook 0.4.2's shell (MIT): a glass capsule that
+   springs into a panel. Deliberately cheap for integrated graphics — no blur
+   filters, no backdrop-filter, no grain pass, no layout animation. Only
+   opacity, transform and the native window resize move. */
 
 :root {
   --accent: #7c5cff;
-  --bg-top: #16161f;
-  --bg-bottom: #0b0b12;
-  --line: rgba(255, 255, 255, 0.09);
-  --ink: #e9e9f2;
-  --ink-dim: #9a9aad;
+  --glass-top: rgba(26, 26, 38, 0.88);
+  --glass-bottom: rgba(11, 11, 18, 0.93);
+  --rim: rgba(255, 255, 255, 0.11);
+  --highlight: rgba(255, 255, 255, 0.16);
+  --ink: #ececf4;
+  --dim: #9a9aad;
   --bubble: rgba(255, 255, 255, 0.05);
+  --capsule: 21.5px; /* half of the 43 px dock height: a true capsule */
 }
 
 * {
@@ -24,47 +28,62 @@ body {
   overflow: hidden;
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 13px;
   user-select: none;
 }
 
-.island {
+.shell {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
-  border: 1px solid var(--line);
-  border-radius: 30px;
   overflow: hidden;
-  transition: border-radius 120ms ease-out;
+  border: 1px solid var(--rim);
+  border-radius: var(--capsule);
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(255, 255, 255, 0.07), transparent 60%),
+    linear-gradient(180deg, var(--glass-top), var(--glass-bottom));
+  box-shadow:
+    inset 0 1px 0 var(--highlight),
+    0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: border-radius 140ms ease-out;
 }
 
-body.open .island {
-  border-radius: 18px;
+body.open .shell {
+  border-radius: 24px;
 }
 
-/* pill ------------------------------------------------------------------ */
+/* the pill: exactly the dock window, 223 x 43 ------------------------------ */
 
 .pill {
   display: flex;
   align-items: center;
-  gap: 9px;
-  height: 58px;
+  gap: 7px;
   flex: none;
-  padding: 0 14px 0 18px;
+  height: 41px; /* 43 minus the 1 px rim top and bottom */
+  padding: 0 6px 0 14px;
   cursor: pointer;
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
+.clock {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
   flex: none;
 }
 
+.dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 .dot.busy {
-  animation: breathe 1.3s ease-in-out infinite;
+  animation: breathe 1.2s ease-in-out infinite;
 }
 
 @keyframes breathe {
@@ -74,21 +93,22 @@ body.open .island {
     transform: scale(1);
   }
   50% {
-    opacity: 0.3;
-    transform: scale(0.65);
+    opacity: 0.25;
+    transform: scale(0.6);
   }
 }
 
-.wordmark {
+.mark {
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.16em;
-  font-size: 12px;
+  letter-spacing: 0.17em;
+  flex: none;
 }
 
 .state {
-  font-size: 11.5px;
-  color: var(--ink-dim);
-  max-width: 220px;
+  font-size: 10.5px;
+  color: var(--dim);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -98,25 +118,20 @@ body.open .island {
   flex: 1;
 }
 
-.model {
-  color: var(--ink-dim);
-  font-size: 10.5px;
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .ghost {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
+  flex: none;
   border: 0;
-  border-radius: 6px;
+  border-radius: 50%;
   background: transparent;
-  color: var(--ink-dim);
-  font-size: 13px;
+  color: var(--dim);
+  font-size: 12px;
   line-height: 1;
   cursor: pointer;
+  transition:
+    transform 120ms ease-out,
+    background 120ms ease-out;
 }
 
 .ghost:hover {
@@ -128,18 +143,35 @@ body.open #toggle {
   transform: rotate(180deg);
 }
 
-/* panel ----------------------------------------------------------------- */
+/* pointer swell, as the Nook pill does */
+.pill:hover .dot {
+  transform: scale(1.15);
+}
+
+/* panel ------------------------------------------------------------------ */
 
 .panel {
   display: none;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rim);
+  animation: unfurl 150ms cubic-bezier(0.2, 1.25, 0.3, 1);
 }
 
 body.open .panel {
   display: flex;
+}
+
+@keyframes unfurl {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .thread {
@@ -148,7 +180,7 @@ body.open .panel {
   padding: 14px 14px 6px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
 }
@@ -169,15 +201,41 @@ body.open .panel {
 }
 
 .intro p {
-  color: var(--ink-dim);
+  color: var(--dim);
   font-size: 12.5px;
   line-height: 1.55;
 }
 
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 13px;
+}
+
+.chips button {
+  border: 1px solid var(--rim);
+  border-radius: 999px;
+  padding: 5px 11px;
+  background: var(--bubble);
+  color: var(--dim);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition:
+    color 110ms ease-out,
+    border-color 110ms ease-out;
+}
+
+.chips button:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 .turn {
   max-width: 88%;
-  padding: 9px 11px;
-  border-radius: 12px;
+  padding: 8px 11px;
+  border-radius: 13px;
   line-height: 1.5;
   font-size: 13.5px;
   white-space: pre-wrap;
@@ -189,7 +247,7 @@ body.open .panel {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(3px);
   }
   to {
     opacity: 1;
@@ -201,25 +259,26 @@ body.open .panel {
   align-self: flex-end;
   background: var(--accent);
   color: #fff;
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 5px;
 }
 
 .turn.leon {
   align-self: flex-start;
   background: var(--bubble);
-  border-bottom-left-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom-left-radius: 5px;
 }
 
 .turn.leon.error {
   background: rgba(255, 92, 92, 0.12);
+  border-color: rgba(255, 92, 92, 0.25);
   color: #ffb4b4;
 }
 
 .note {
   align-self: center;
   font-size: 11px;
-  color: var(--ink-dim);
-  padding: 1px 0;
+  color: var(--dim);
 }
 
 .caret::after {
@@ -245,13 +304,13 @@ body.open .panel {
   margin: 0 14px 8px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  border-radius: 12px;
+  border-radius: 13px;
   background: rgba(124, 92, 255, 0.08);
 }
 
 .approval .why {
   font-size: 12px;
-  color: var(--ink-dim);
+  color: var(--dim);
   margin-bottom: 6px;
 }
 
@@ -274,7 +333,7 @@ body.open .panel {
 
 .approval button {
   border: 0;
-  border-radius: 8px;
+  border-radius: 9px;
   padding: 6px 14px;
   font: inherit;
   font-size: 12.5px;
@@ -294,14 +353,14 @@ body.open .panel {
 /* footer ---------------------------------------------------------------- */
 
 .foot {
-  border-top: 1px solid var(--line);
-  padding: 8px 12px 12px;
+  border-top: 1px solid var(--rim);
+  padding: 7px 12px 12px;
 }
 
 .stats {
   font-size: 10.5px;
-  color: var(--ink-dim);
-  padding: 0 2px 7px;
+  color: var(--dim);
+  padding: 0 2px 6px;
   letter-spacing: 0.02em;
 }
 
@@ -310,8 +369,8 @@ body.open .panel {
   align-items: flex-end;
   gap: 6px;
   background: var(--bubble);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  border: 1px solid var(--rim);
+  border-radius: 13px;
   padding: 6px 6px 6px 10px;
 }
 
@@ -336,7 +395,7 @@ body.open .panel {
 }
 
 #input::placeholder {
-  color: var(--ink-dim);
+  color: var(--dim);
 }
 
 .send,
@@ -345,7 +404,7 @@ body.open .panel {
   height: 28px;
   flex: none;
   border: 0;
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--accent);
   color: #fff;
   font-size: 14px;
