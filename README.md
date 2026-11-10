@@ -56,7 +56,7 @@ and what LEON is doing, and nothing else.
 - **Hover** it and it opens after a 120 ms debounce; move away and it folds
   after 250 ms.
 - **Click** it to pin it open. Click again, or press **Esc**, to fold it.
-- Open, it grows downwards into a 520 × 560 conversation panel.
+- Open, it grows downwards into a 470 × 170 panel: the header row keeps the clock, the state and the Chat/Tools switch, and the tiles shrink to a six-across, two-row grid so the whole panel fits without scrolling.
 - It stays open while a reply is streaming, while you type, and while an
   approval card is waiting — it will not fold under your hands.
 

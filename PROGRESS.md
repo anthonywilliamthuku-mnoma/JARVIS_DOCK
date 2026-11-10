@@ -4,7 +4,7 @@ Single source of truth for LEON. Re-read at the start of every session.
 
 ## Done
 - **Phase 0 (foundations):** project skeleton, `pyproject.toml` (uv, ruff, mypy strict, pytest), CI workflow, `ARCHITECTURE.md`, `DECISIONS.md`, `SKILLS.md`, this file. Tagged `phase-0-done`.
-- **Dock shell (D-008, D-012):** recreated from Nook 0.4.2 as a transparent **223 x 43** glass capsule at the top centre, flush with the screen edge. Hover opens it (120 ms), leaving folds it (250 ms), a click pins it, and it grows into a 520 x 560 panel. Frameless, always on top, draggable, WebView2 through `pywebview`; no Node, no Rust, no open ports.
+- **Dock shell (D-008, D-012):** recreated from Nook 0.4.2 as a transparent **223 x 43** glass capsule at the top centre, flush with the screen edge. Hover opens it (120 ms), leaving folds it (250 ms), a click pins it, and it grows into a **470 x 170** panel. Frameless, always on top, draggable, WebView2 through `pywebview`; no Node, no Rust, no open ports.
 - **Brain (D-009):** `leond/brain.py` streams from any local OpenAI-compatible server and understands tool calls. Default model is the small local one.
 - **Facts (D-010):** `leond/facts.py` reads the clock, time zone, region, OS build, memory and disk from Windows and injects them into every turn.
 - **Skills and approvals (D-011):** `leond/skills.py` (local_time, local_place, system_report, open_app, write_note, run_powershell) and `leond/agent.py`, which checks policy, raises an Allow / Deny card for T2+, and bounds a turn to three steps.
@@ -39,6 +39,27 @@ Single source of truth for LEON. Re-read at the start of every session.
     browser with mocked bridge data and inspected; two layout bugs were found
     and fixed there (the grid stayed visible under a tool page, and the glyph
     column picked up colour emoji).
+
+- **The open panel is 470 x 170, and the tiles were shrunk to fit it:** the
+  Chat/Tools switch moved into the header row, the grid is six across and two
+  rows (all twelve tiles, no scrolling, 9 px labels that do not clip), and the
+  approval card became an opaque sheet over the composer so nothing shows
+  through it. Every tool page fits its 101 px body without scrolling except the
+  calendar, which scrolls about 100 px for its add field and event list because
+  a whole month plus controls cannot fit 127 px; the month grid itself is what
+  you see first.
+- **Verified on 2026-11-10 (open panel):**
+  - Rendered at true size in a browser with a mocked bridge: collapsed
+    223 x 43 with the tabs hidden, open 470 x 170, grid overflow 0, body
+    overflow 0, six tiles per row, and the approval card 87 px tall inside the
+    panel without covering the header.
+  - `tests/test_dock_launch.py` runs `dock.run()` against a faked window and
+    asserts what a real launch does: the capsule is created 223 x 43 at y = 0
+    and centred, `set_open(True)` resizes it to 470 x 170 without moving the top
+    edge, and the bridge methods the page calls all exist.
+  - **Not launched here:** this is a Linux VM with no display and no GTK/QT, so
+    `uv run leon` stops in `webview.initialize()` before a window exists. The
+    native window, transparency and hover-open still need the user's PC.
 
 ## In progress
 - Phase 1 (brain and core loop) is essentially complete for a single-user dock.

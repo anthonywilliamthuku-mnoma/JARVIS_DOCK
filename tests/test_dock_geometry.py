@@ -12,6 +12,10 @@ def test_the_dock_is_exactly_the_requested_size() -> None:
     assert (WIDTH, COLLAPSED_H) == (223, 43)
 
 
+def test_the_open_panel_is_exactly_the_requested_size() -> None:
+    assert (EXPANDED_W, EXPANDED_H) == (470, 170)
+
+
 def test_collapsed_dock_is_centred_and_flush_with_the_top() -> None:
     x, y, width, height = geometry(1366, opened=False)
     assert (width, height) == (223, 43)
@@ -33,6 +37,12 @@ def test_both_states_share_the_same_centre_line() -> None:
     collapsed = geometry(1920, opened=False)
     opened = geometry(1920, opened=True)
     assert abs((collapsed[0] + collapsed[2] / 2) - (opened[0] + opened[2] / 2)) <= 0.5
+
+
+def test_the_open_panel_still_fits_a_1366_screen() -> None:
+    x, _, width, _ = geometry(1366, opened=True)
+    assert x >= 0
+    assert x + width <= 1366
 
 
 def test_a_narrow_screen_is_not_overrun() -> None:

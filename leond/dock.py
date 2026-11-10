@@ -26,11 +26,12 @@ from leond.config import Config, config_dir
 UI_DIR = Path(__file__).parent / "ui"
 
 # The dock itself: a 223 x 43 glass capsule at the top of the screen, sized to
-# match the reference shell. Opening it grows the same window downwards.
+# match the reference shell. Opening it grows the same window downwards into a
+# 470 x 170 panel, which is the whole budget the tiles and the chat get.
 WIDTH = 223
 COLLAPSED_H = 43
-EXPANDED_W = 520
-EXPANDED_H = 560
+EXPANDED_W = 470
+EXPANDED_H = 170
 TOP_MARGIN = 0
 FLUSH_S = 0.05
 APPROVAL_TIMEOUT_S = 120.0

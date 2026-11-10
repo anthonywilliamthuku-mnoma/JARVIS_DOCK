@@ -244,7 +244,7 @@ async function send() {
 
 function resize() {
   el.input.style.height = "auto";
-  el.input.style.height = Math.min(el.input.scrollHeight, 108) + "px";
+  el.input.style.height = Math.min(el.input.scrollHeight, 62) + "px";
 }
 
 el.form.addEventListener("submit", (event) => {
@@ -352,6 +352,8 @@ function showView(name) {
 }
 
 tabs.addEventListener("click", (event) => {
+  // The tabs sit in the pill, whose click pins the dock: keep that to itself.
+  event.stopPropagation();
   const tab = event.target.closest("button[data-view]");
   if (tab) showView(tab.dataset.view);
 });
@@ -593,7 +595,7 @@ const RENDERERS = {
 
   calendar(body, payload) {
     let month = (payload.month && payload.month.month) || "";
-    const head = h("div", { className: "toolrow" });
+    const head = h("div", { className: "toolrow calnav" });
     const sheet = h("div", { className: "cal" });
     const list = h("div", { className: "list" });
     const field = h("input", {
@@ -625,7 +627,7 @@ const RENDERERS = {
         if (view.events[key]) classes.push("has");
         sheet.append(h("span", { className: classes.join(" "), title: (view.events[key] || []).join(" · ") }, String(day)));
       }
-      const entries = Object.entries(view.events).filter(([key]) => key.startsWith(view.month)).slice(0, 8);
+      const entries = Object.entries(view.events).filter(([key]) => key.startsWith(view.month)).slice(0, 3);
       list.replaceChildren(
         ...entries.map(([key, items]) =>
           h("div", { className: "item" }, h("span", { className: "dim" }, key.slice(8)), h("span", { className: "grow" }, items.join(" · "))),
@@ -649,7 +651,20 @@ const RENDERERS = {
       if (result.month) paint(result.month);
     };
 
-    body.append(head, sheet, field, button("Save the event", add, "primary act"), h("div", {}, list));
+    // The panel is only 170 px tall, so the month grid gets the top and the
+    // new-event field shares its row with the button.
+    body.append(
+      head,
+      sheet,
+      h("div", { className: "toolrow" }, field, button("Add", add, "primary act")),
+      list,
+    );
+    field.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        add();
+      }
+    });
     paint(payload.month);
   },
 
@@ -719,9 +734,10 @@ const RENDERERS = {
       status.textContent = result.ok ? result.message : result.error;
     };
     const chips = h("div", { className: "toolrow" });
-    for (const app of (payload.apps || []).slice(0, 8)) {
+    for (const app of (payload.apps || []).slice(0, 5)) {
       chips.append(button(app, () => open(app)));
     }
+    field.title = "Apps come from LEON's allowlist; folders must already exist.";
     body.append(
       chips,
       field,
@@ -730,7 +746,6 @@ const RENDERERS = {
         field.value = "";
       }, "primary act"),
       status,
-      hint("Apps come from LEON's allowlist; folders must already exist."),
     );
   },
 
