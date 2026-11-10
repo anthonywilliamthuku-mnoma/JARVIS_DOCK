@@ -35,6 +35,7 @@ Dock UI (HTML/CSS/JS)  <------- in-process bridge, no port -------->  leond (cor
 | Facts | 1 | Live Windows readings injected into every turn (D-010) |
 | Agent loop | 1 | At most three steps: tool calls -> policy -> answer (D-011) |
 | Skill framework | 1-2 | Registry with tiers and JSON schemas; progressive disclosure later |
+| Tool tiles | 1-2 | Nook's utilities as Python backends behind the grid (D-013) |
 | Dock | 1 | pywebview: 223 x 43 glass capsule that opens into a panel, vanilla HTML/CSS/JS, shell recreated from Nook 0.4.2 (D-008, D-012) |
 | `leon-elevated` | 4 | Allowlisted, schema-validated operations only |
 

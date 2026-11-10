@@ -279,7 +279,9 @@ el.deny.addEventListener("click", () => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
-  if (ticket) {
+  if (TOOLS.page) {
+    closeTool();
+  } else if (ticket) {
     api()?.answer(ticket, false);
     closeApproval();
   } else if (busy) {
@@ -295,6 +297,496 @@ el.stop.addEventListener("click", () => {
   api()?.stop();
   el.state.textContent = "stopping…";
 });
+
+/* tools ------------------------------------------------------------------
+   The grid mirrors Nook's bento: every tile is a real backend action. */
+
+const TOOLS = { tiles: [], page: null, poll: null };
+
+const tabs = document.getElementById("tabs");
+const views = {
+  chat: document.getElementById("viewChat"),
+  tools: document.getElementById("viewTools"),
+};
+const grid = document.getElementById("grid");
+const tool = document.getElementById("tool");
+const toolBody = document.getElementById("toolBody");
+const toolName = document.getElementById("toolName");
+const toolBadge = document.getElementById("toolBadge");
+
+function h(tag, props, ...kids) {
+  const node = document.createElement(tag);
+  Object.assign(node, props || {});
+  for (const kid of kids) {
+    if (kid == null) continue;
+    node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  }
+  return node;
+}
+
+function hint(text) {
+  return h("p", { className: "hint" }, text);
+}
+
+function button(label, onclick, cls) {
+  const node = h("button", { type: "button", className: cls || "act" }, label);
+  node.addEventListener("click", onclick);
+  return node;
+}
+
+async function run(toolId, action, arg = "") {
+  const call = api();
+  if (!call) return { ok: false, error: "no bridge" };
+  try {
+    return await call.act_tool(toolId, action, String(arg));
+  } catch (err) {
+    return { ok: false, error: "that did not work" };
+  }
+}
+
+function showView(name) {
+  for (const [key, view] of Object.entries(views)) view.hidden = key !== name;
+  for (const tab of tabs.children) tab.classList.toggle("on", tab.dataset.view === name);
+  if (name === "tools") loadGrid();
+  else if (TOOLS.page) closeTool();
+}
+
+tabs.addEventListener("click", (event) => {
+  const tab = event.target.closest("button[data-view]");
+  if (tab) showView(tab.dataset.view);
+});
+
+async function loadGrid() {
+  const call = api();
+  if (!call) return;
+  try {
+    TOOLS.tiles = await call.tools();
+  } catch (err) {
+    TOOLS.tiles = [];
+  }
+  grid.replaceChildren(...TOOLS.tiles.map(tileButton));
+}
+
+function tileButton(item) {
+  const node = h(
+    "button",
+    { type: "button", className: `tile ${item.size}`, title: item.blurb },
+    item.badge ? h("span", { className: "badge" }, item.badge) : null,
+    h("span", { className: "glyph" }, item.glyph),
+    h("span", { className: "name" }, item.name),
+    h("span", { className: "blurb" }, item.blurb),
+  );
+  node.addEventListener("click", () => openTool(item.id));
+  return node;
+}
+
+async function openTool(id) {
+  const item = TOOLS.tiles.find((tile) => tile.id === id);
+  TOOLS.page = id;
+  tool.hidden = false;
+  grid.hidden = true;
+  toolName.textContent = item ? item.name : id;
+  toolBadge.textContent = item && item.badge ? item.badge : "";
+  toolBody.replaceChildren(hint("…"));
+
+  const payload = (await api()?.open_tool(id)) || { ok: false, error: "no bridge" };
+  toolBody.replaceChildren();
+  if (payload.ok === false) {
+    toolBody.append(hint(payload.error || "this tool cannot open"));
+    return;
+  }
+  const render = RENDERERS[id];
+  if (render) render(toolBody, payload, item);
+  else toolBody.append(hint("No view for this tool yet."));
+}
+
+function closeTool() {
+  TOOLS.page = null;
+  if (TOOLS.poll) clearInterval(TOOLS.poll);
+  TOOLS.poll = null;
+  tool.hidden = true;
+  grid.hidden = false;
+  loadGrid();
+}
+
+document.getElementById("toolBack").addEventListener("click", closeTool);
+
+/* one renderer per tile ------------------------------------------------- */
+
+const RENDERERS = {
+  awake(body, payload) {
+    const line = h("p", {}, "");
+    const paint = (state) => {
+      line.textContent = state.on
+        ? `Keeping this PC awake${state.until ? " until " + state.until : " until switched off"}.`
+        : "The PC may sleep normally.";
+    };
+    paint(payload.state || { on: false });
+    const pick = async (minutes, label) => {
+      const result = minutes === null ? await run("awake", "off") : await run("awake", "on", minutes);
+      paint(result.state || { on: false });
+      toolBadge.textContent = (result.state || {}).on ? "on" : "off";
+    };
+    body.append(
+      line,
+      h(
+        "div",
+        { className: "toolrow" },
+        button("15 min", () => pick(15)),
+        button("1 hour", () => pick(60)),
+        button("Always", () => pick(0)),
+        button("Off", () => pick(null), "primary"),
+      ),
+      hint("Nook's coffee tile, without the cup: Windows is told to keep the display on."),
+    );
+  },
+
+  timer(body) {
+    const readout = h("div", { className: "readout" }, "00:00");
+    let left = 0;
+    let running = null;
+    let elapsed = 0;
+    const paint = () => {
+      const value = left > 0 ? left : elapsed;
+      const minutes = String(Math.floor(value / 60)).padStart(2, "0");
+      const seconds = String(value % 60).padStart(2, "0");
+      readout.textContent = `${minutes}:${seconds}`;
+    };
+    const stop = () => {
+      if (running) clearInterval(running);
+      running = null;
+      if (TOOLS.poll) clearInterval(TOOLS.poll);
+      TOOLS.poll = null;
+    };
+    const startCountdown = (minutes) => {
+      stop();
+      left = minutes * 60;
+      elapsed = 0;
+      paint();
+      running = setInterval(() => {
+        left = Math.max(0, left - 1);
+        paint();
+        if (left === 0) {
+          stop();
+          run("timer", "beep");
+          readout.textContent = "time";
+        }
+      }, 1000);
+      TOOLS.poll = running;
+    };
+    const startStopwatch = () => {
+      stop();
+      left = 0;
+      running = setInterval(() => {
+        elapsed += 1;
+        paint();
+      }, 1000);
+      TOOLS.poll = running;
+    };
+    body.append(
+      readout,
+      h(
+        "div",
+        { className: "toolrow" },
+        button("1 min", () => startCountdown(1)),
+        button("5 min", () => startCountdown(5)),
+        button("25 min", () => startCountdown(25)),
+        button("Stopwatch", startStopwatch),
+        button("Stop", () => {
+          stop();
+          paint();
+        }, "primary"),
+      ),
+      hint("Runs in the page; Python only makes the sound at zero."),
+    );
+  },
+
+  calc(body) {
+    const field = h("input", {
+      className: "field",
+      placeholder: "200 + 15%  ·  20% of 150  ·  5 km to mi",
+      spellcheck: false,
+    });
+    const out = h("div", { className: "readout" }, "");
+    let timer = null;
+    const solve = async () => {
+      const text = field.value.trim();
+      if (!text) {
+        out.textContent = "";
+        return;
+      }
+      const result = await run("calc", "eval", text);
+      out.textContent = result.ok ? result.answer : result.error;
+    };
+    field.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(solve, 140);
+    });
+    body.append(field, out, hint("Parsed properly, never executed. Units and 0x/0b included."));
+    setTimeout(() => field.focus(), 40);
+  },
+
+  system(body, payload) {
+    const meters = {};
+    const make = (label) => {
+      const bar = h("i", { style: "width:0%" });
+      const value = h("span", { className: "value" }, "—");
+      const row = h(
+        "div",
+        { className: "meter" },
+        h("span", {}, label),
+        h("div", { className: "bar" }, bar),
+        value,
+      );
+      body.append(row);
+      meters[label] = { bar, value };
+    };
+    make("CPU");
+    make("Memory");
+    make("Disk");
+    const free = h("p", {}, "");
+    body.append(free);
+
+    const paint = (state) => {
+      if (!state) return;
+      const cpu = Math.max(0, state.cpu);
+      meters.CPU.bar.style.width = `${cpu}%`;
+      meters.CPU.value.textContent = `${cpu}%`;
+      meters.Memory.bar.style.width = `${Math.max(0, state.memory)}%`;
+      meters.Memory.value.textContent = `${Math.max(0, state.memory)}%`;
+      const used = state.disk_total_gb ? 100 - (state.free_gb / state.disk_total_gb) * 100 : 0;
+      meters.Disk.bar.style.width = `${used.toFixed(0)}%`;
+      meters.Disk.value.textContent = `${state.free_gb} GB`;
+      free.textContent = `${state.free_gb} GB free of ${state.disk_total_gb} GB on this drive.`;
+    };
+    paint(payload.state);
+    const ticker = async () => paint((await run("system", "read")).state);
+    TOOLS.poll = setInterval(ticker, 2000);
+  },
+
+  qr(body) {
+    const field = h("textarea", {
+      className: "field",
+      rows: 2,
+      placeholder: "Text or a link to encode",
+    });
+    const frame = h("div", {});
+    const make = async () => {
+      const result = await run("qr", "make", field.value);
+      frame.replaceChildren();
+      if (!result.ok) {
+        frame.className = "";
+        frame.append(hint(result.error));
+        return;
+      }
+      frame.className = "qr";
+      frame.innerHTML = result.svg;
+    };
+    body.append(field, button("Make the code", make, "primary act"), frame);
+    field.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        make();
+      }
+    });
+  },
+
+  calendar(body, payload) {
+    let month = (payload.month && payload.month.month) || "";
+    const head = h("div", { className: "toolrow" });
+    const sheet = h("div", { className: "cal" });
+    const list = h("div", { className: "list" });
+    const field = h("input", {
+      className: "field",
+      placeholder: "2026-11-10 20:30 Dentist",
+      spellcheck: false,
+    });
+
+    const shift = (delta) => {
+      const [year, number] = month.split("-").map(Number);
+      const date = new Date(year, number - 1 + delta, 1);
+      month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      load();
+    };
+
+    const paint = (view) => {
+      month = view.month;
+      head.replaceChildren(
+        button("‹", () => shift(-1)),
+        h("strong", {}, view.label),
+        button("›", () => shift(1)),
+      );
+      sheet.replaceChildren(...["M", "T", "W", "T", "F", "S", "S"].map((d) => h("span", { className: "head" }, d)));
+      for (let i = 0; i < view.first_weekday; i += 1) sheet.append(h("span", { className: "day blank" }));
+      for (let day = 1; day <= view.days; day += 1) {
+        const key = `${view.month}-${String(day).padStart(2, "0")}`;
+        const classes = ["day"];
+        if (key === view.today) classes.push("today");
+        if (view.events[key]) classes.push("has");
+        sheet.append(h("span", { className: classes.join(" "), title: (view.events[key] || []).join(" · ") }, String(day)));
+      }
+      const entries = Object.entries(view.events).filter(([key]) => key.startsWith(view.month)).slice(0, 8);
+      list.replaceChildren(
+        ...entries.map(([key, items]) =>
+          h("div", { className: "item" }, h("span", { className: "dim" }, key.slice(8)), h("span", { className: "grow" }, items.join(" · "))),
+        ),
+      );
+      if (!entries.length) list.append(hint("Nothing saved this month yet."));
+    };
+
+    const load = async () => {
+      const result = await run("calendar", "month", month);
+      if (result.month) paint(result.month);
+    };
+
+    const add = async () => {
+      const result = await run("calendar", "add", field.value);
+      if (!result.ok) {
+        list.prepend(hint(result.error));
+        return;
+      }
+      field.value = "";
+      if (result.month) paint(result.month);
+    };
+
+    body.append(head, sheet, field, button("Save the event", add, "primary act"), h("div", {}, list));
+    paint(payload.month);
+  },
+
+  clipboard(body, payload) {
+    const list = h("div", { className: "list" });
+    const paint = (items) => {
+      list.replaceChildren(
+        ...items.map((item) =>
+          h(
+            "div",
+            { className: "item" },
+            h("span", { className: "dim" }, item.when),
+            h("span", { className: "grow" }, item.text.replace(/\s+/g, " ").slice(0, 90)),
+            button("copy", async () => run("clipboard", "copy", item.text)),
+          ),
+        ),
+      );
+      if (!items.length) list.append(hint("Nothing captured yet."));
+    };
+    paint(payload.items || []);
+    body.append(
+      h(
+        "div",
+        { className: "toolrow" },
+        button("Grab from the clipboard", async () => {
+          const result = await run("clipboard", "grab");
+          paint(result.items || []);
+          if (!result.ok) list.prepend(hint(result.error));
+        }, "primary act"),
+        button("Clear", async () => {
+          await run("clipboard", "clear");
+          paint([]);
+        }),
+      ),
+      list,
+      hint("Kept in memory only, like Nook's, and cleared when the dock closes."),
+    );
+  },
+
+  notes(body, payload) {
+    const reader = h("pre", { className: "hint" }, "");
+    const list = h("div", { className: "list" });
+    const paint = (notes) => {
+      list.replaceChildren(
+        ...notes.map((note) =>
+          button(note.title || note.name, async () => {
+            const result = await run("notes", "read", note.name);
+            reader.textContent = result.ok ? result.text : result.error;
+          }),
+        ),
+      );
+      if (!notes.length) list.append(hint("No notes yet — ask LEON to write one."));
+    };
+    paint(payload.notes || []);
+    body.append(list, reader, hint("Saved as Markdown in LEON's notes folder."));
+  },
+
+  launch(body, payload) {
+    const field = h("input", {
+      className: "field",
+      placeholder: "https://…  or  C:\\Users\\you\\Documents  or  ms-settings:display",
+      spellcheck: false,
+    });
+    const status = hint("");
+    const open = async (target) => {
+      const result = await run("launch", "open", target);
+      status.textContent = result.ok ? result.message : result.error;
+    };
+    const chips = h("div", { className: "toolrow" });
+    for (const app of (payload.apps || []).slice(0, 8)) {
+      chips.append(button(app, () => open(app)));
+    }
+    body.append(
+      chips,
+      field,
+      button("Open it", () => {
+        open(field.value.trim());
+        field.value = "";
+      }, "primary act"),
+      status,
+      hint("Apps come from LEON's allowlist; folders must already exist."),
+    );
+  },
+
+  colour(body, payload) {
+    const swatch = h("div", { className: "swatch", style: "background:#101018" });
+    const code = h("div", { className: "readout" }, "—");
+    const status = hint("Move the pointer where you want, then pick.");
+    let pending = null;
+    const pick = () => {
+      status.textContent = "Picking in 3 seconds…";
+      clearTimeout(pending);
+      pending = setTimeout(async () => {
+        const result = await run("colour", "pick");
+        if (!result.ok) {
+          status.textContent = result.error;
+          return;
+        }
+        swatch.style.background = result.colour.hex;
+        code.textContent = result.colour.hex;
+        status.textContent = `${result.colour.rgb} · copied`;
+      }, 3000);
+    };
+    if (payload.colour && payload.colour.hex) {
+      swatch.style.background = payload.colour.hex;
+      code.textContent = payload.colour.hex;
+    }
+    body.append(swatch, code, button("Pick under the cursor", pick, "primary act"), status);
+  },
+
+  voice(body) {
+    const status = hint("Records the microphone to Music\\Voice memos.");
+    const record = async (seconds) => {
+      status.textContent = `Recording for ${seconds} seconds…`;
+      const result = await run("voice", "record", seconds);
+      status.textContent = result.ok ? result.message : result.error;
+    };
+    body.append(
+      h(
+        "div",
+        { className: "toolrow" },
+        button("5 s", () => record(5)),
+        button("10 s", () => record(10)),
+        button("30 s", () => record(30), "primary"),
+      ),
+      status,
+      hint("Needs the microphone package: `uv add sounddevice`."),
+    );
+  },
+
+  ocr(body) {
+    body.append(
+      hint("Reading text off the screen needs Windows OCR: `uv add winsdk`."),
+      hint("Until then this tile is a placeholder; the OCR pass is not wired up yet."),
+    );
+  },
+};
 
 /* startup ---------------------------------------------------------------- */
 
@@ -317,7 +809,7 @@ function ready() {
     .catch(() => {
       el.stats.textContent = "offline";
     });
-}
-
-if (window.pywebview && window.pywebview.api) ready();
+}  if (window.pywebview && window.pywebview.api) ready();
 else window.addEventListener("pywebviewready", ready);
+
+window.addEventListener("pywebviewready", loadGrid);

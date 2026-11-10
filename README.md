@@ -92,6 +92,49 @@ showing the exact command; an unanswered card is a refusal, and the hard-deny
 list in `leond/policy.py` refuses destructive commands outright with no
 override.
 
+## Tools: the tile grid
+
+Open the dock and switch to **Tools** for a bento grid of utilities, like
+Nook's. Every tile is a real backend action on this PC, checked by the policy
+engine and written to the audit log (the log records the call, never your text).
+
+| Tile | What it does |
+|---|---|
+| Keep awake | Holds the display on for 15 min, an hour, or until switched off |
+| Timer | Countdown and stopwatch, with a chime at zero |
+| Calculator | Sums, `20% of 150`, `2^10`, `5!`, hex and binary, unit and temperature conversion |
+| System | CPU, memory and free space, live while open |
+| Calendar | Month view and events, saved in `%APPDATA%\LEON\calendar.txt` |
+| QR code | Any text or link as a scannable code |
+| Clipboard | Grabs the current text and keeps the last 30, in memory only |
+| Notes | Everything LEON has saved as Markdown |
+| Quick launch | Allowlisted apps, URLs, `ms-settings:` pages and existing folders |
+| Colour picker | Reads the pixel under the cursor and copies the hex |
+| Voice memo | Records the microphone to `Music\Voice memos` |
+| Text extractor | Screen OCR |
+
+Voice memo needs `uv add sounddevice`; the text extractor needs `uv add winsdk`
+and its OCR pass is **not wired up yet** — the tile says so rather than
+pretending. Everything else runs on the standard library.
+
+## Nook 0.4.2 parity
+
+Nook's shell is recreated; its modules are being ported one wave at a time
+because they are written in Rust against Win32, DWM, `Windows.UI.Composition`,
+`Windows.Media.Ocr` and SMTC, which Python reaches differently or not at all.
+
+| Nook | LEON |
+|---|---|
+| Pill clock, hover/pin shell, glass | Done |
+| Keep awake, timer, calculator, calendar, QR, clipboard, quick launch, colour picker, system monitor, notes | Done |
+| Voice memo | Code present, needs `sounddevice`, unverified on hardware |
+| Text extractor (OCR), media (SMTC) | Not implemented; needs `winsdk` |
+| Settings page, tray icon, global hotkey | Not implemented |
+| Phone link (adb/scrcpy, LocalSend) | Not implemented; needs external binaries |
+| Wallpaper, draw on screen, Lens search, font detector | Not implemented |
+| Plugin SDK (`plugin.toml` + any language) | Not implemented |
+| Bento edit mode (drag/resize tiles) | Not implemented |
+
 ## Layout
 
 ```
@@ -100,6 +143,7 @@ leond/
   facts.py      live Windows facts (time, place, system, disk)
   brain.py      streaming client for local OpenAI-compatible servers, with tools
   skills.py     what LEON can do, each with a tier and a JSON schema
+  tools.py      the tile grid's backends (Nook's utilities, rebuilt)
   agent.py      one turn: check policy, ask if needed, run the skill, answer
   policy.py     permission tiers and the hard-deny list
   audit.py      hash-chained audit log

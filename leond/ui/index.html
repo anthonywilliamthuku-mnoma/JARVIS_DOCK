@@ -18,46 +18,66 @@
       </header>
 
       <section class="panel" id="panel">
-        <div class="thread" id="thread" aria-live="polite">
-          <article class="intro" id="intro">
-            <h1>Hello, I am LEON.</h1>
-            <p>
-              On this PC, on your own model. Ask the time, the date or how the
-              machine is doing — those come from Windows, not from guessing.
-            </p>
-            <div class="chips" id="chips">
-              <button type="button" data-say="What time is it right now?">Time</button>
-              <button type="button" data-say="How is this PC doing?">System</button>
-              <button type="button" data-say="Open Notepad">Open Notepad</button>
+        <nav class="tabs" id="tabs">
+          <button class="tab on" id="tabChat" type="button" data-view="chat">Chat</button>
+          <button class="tab" id="tabTools" type="button" data-view="tools">Tools</button>
+        </nav>
+
+        <div class="view" id="viewChat">
+          <div class="thread" id="thread" aria-live="polite">
+            <article class="intro" id="intro">
+              <h1>Hello, I am LEON.</h1>
+              <p>
+                On this PC, on your own model. Ask the time, the date or how the
+                machine is doing — those come from Windows, not from guessing.
+              </p>
+              <div class="chips" id="chips">
+                <button type="button" data-say="What time is it right now?">Time</button>
+                <button type="button" data-say="How is this PC doing?">System</button>
+                <button type="button" data-say="Open Notepad">Open Notepad</button>
+              </div>
+            </article>
+          </div>
+
+          <div class="approval" id="approval" hidden>
+            <p class="why" id="askWhy"></p>
+            <pre class="detail" id="askDetail"></pre>
+            <div class="row">
+              <button class="deny" id="deny" type="button">Deny</button>
+              <button class="allow" id="allow" type="button">Allow</button>
             </div>
-          </article>
+          </div>
+
+          <footer class="foot">
+            <div class="stats" id="stats">ready</div>
+            <form class="composer" id="composer" autocomplete="off">
+              <textarea
+                id="input"
+                rows="1"
+                placeholder="Ask LEON…"
+                spellcheck="false"
+                aria-label="Message LEON"
+              ></textarea>
+              <button class="send" id="send" type="submit" title="Send" aria-label="Send">↑</button>
+              <button class="stop" id="stop" type="button" title="Stop (Esc)" aria-label="Stop" hidden>
+                ■
+              </button>
+            </form>
+          </footer>
         </div>
 
-        <div class="approval" id="approval" hidden>
-          <p class="why" id="askWhy"></p>
-          <pre class="detail" id="askDetail"></pre>
-          <div class="row">
-            <button class="deny" id="deny" type="button">Deny</button>
-            <button class="allow" id="allow" type="button">Allow</button>
+        <div class="view" id="viewTools" hidden>
+          <div class="grid" id="grid"></div>
+          <div class="tool" id="tool" hidden>
+            <header class="toolhead">
+              <button class="ghost" id="toolBack" type="button" aria-label="Back to tools">‹</button>
+              <span class="toolname" id="toolName"></span>
+              <span class="spacer"></span>
+              <span class="toolbadge" id="toolBadge"></span>
+            </header>
+            <div class="toolbody" id="toolBody"></div>
           </div>
         </div>
-
-        <footer class="foot">
-          <div class="stats" id="stats">ready</div>
-          <form class="composer" id="composer" autocomplete="off">
-            <textarea
-              id="input"
-              rows="1"
-              placeholder="Ask LEON…"
-              spellcheck="false"
-              aria-label="Message LEON"
-            ></textarea>
-            <button class="send" id="send" type="submit" title="Send" aria-label="Send">↑</button>
-            <button class="stop" id="stop" type="button" title="Stop (Esc)" aria-label="Stop" hidden>
-              ■
-            </button>
-          </form>
-        </footer>
       </section>
     </main>
     <script src="app.js"></script>

@@ -17,7 +17,7 @@ from typing import Any
 
 import webview
 
-from leond import __version__
+from leond import __version__, tools
 from leond.agent import Agent, Hooks
 from leond.audit import AuditLog
 from leond.brain import Brain, BrainError, Message
@@ -119,6 +119,24 @@ class DockApi:
     def set_open(self, opened: bool) -> dict[str, Any]:
         self._resize(bool(opened))
         return {"ok": True}
+
+    # -- tool tiles ----------------------------------------------------------
+
+    def tools(self) -> list[dict[str, Any]]:
+        """The grid: every tile with its name, glyph, size and badge."""
+        return tools.snapshot()
+
+    def open_tool(self, name: str) -> dict[str, Any]:
+        """The opening payload for a tile the user clicked."""
+        payload = tools.state(str(name))
+        self._audit.write("tool", f"open {name}", "ok" if payload.get("ok") else "refused")
+        return payload
+
+    def act_tool(self, name: str, action: str, arg: str = "") -> dict[str, Any]:
+        """Run one tile action. The audit log records the call, never its text."""
+        result = tools.act(str(name), str(action), str(arg))
+        self._audit.write("tool", f"{name}.{action}", "ok" if result.get("ok") else "refused")
+        return result
 
     def minimise(self) -> None:
         if self._window is not None:

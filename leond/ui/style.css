@@ -174,6 +174,17 @@ body.open .panel {
   }
 }
 
+.view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.view[hidden] {
+  display: none;
+}
+
 .thread {
   flex: 1;
   overflow-y: auto;
@@ -350,11 +361,377 @@ body.open .panel {
   color: #fff;
 }
 
+/* tabs and the tool grid ------------------------------------------------ */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px 0;
+  flex: none;
+}
+
+.tab {
+  border: 0;
+  border-radius: 8px;
+  padding: 5px 12px;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--ink);
+  background: var(--bubble);
+}
+
+.tab.on {
+  color: var(--ink);
+  background: rgba(124, 92, 255, 0.16);
+}
+
+.grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 86px;
+  gap: 8px;
+  padding: 10px 12px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.grid[hidden] {
+  display: none;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--rim);
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform 110ms ease-out,
+    border-color 110ms ease-out;
+}
+
+.tile:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.tile:active {
+  transform: scale(0.97);
+}
+
+.tile.wide {
+  grid-column: span 2;
+}
+
+.tile.large {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.tile .glyph {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.tile .name {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.tile .blurb {
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tile .badge {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.tile .badge:empty {
+  display: none;
+}
+
+/* one tool -------------------------------------------------------------- */
+
+.tool {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tool[hidden] {
+  display: none;
+}
+
+.toolhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--rim);
+}
+
+.toolname {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.toolbadge {
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.toolbody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12.5px;
+  user-select: text;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.toolbody p {
+  color: var(--dim);
+  line-height: 1.5;
+}
+
+.toolbody strong {
+  color: var(--ink);
+}
+
+.toolrow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.toolrow button,
+.toolbody button.act {
+  border: 1px solid var(--rim);
+  border-radius: 9px;
+  padding: 6px 12px;
+  background: var(--bubble);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.toolrow button:hover,
+.toolbody button.act:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.toolbody button.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+
+.toolbody input.field,
+.toolbody textarea.field {
+  width: 100%;
+  border: 1px solid var(--rim);
+  border-radius: 9px;
+  background: var(--bubble);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 7px 9px;
+  outline: none;
+  resize: none;
+}
+
+.toolbody input.field:focus,
+.toolbody textarea.field:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.readout {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.meter {
+  display: grid;
+  grid-template-columns: 62px 1fr 46px;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--dim);
+}
+
+.meter .bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+
+.meter .bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.meter .value {
+  text-align: right;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  font-size: 11px;
+  text-align: center;
+}
+
+.cal .head {
+  color: var(--dim);
+  font-size: 9.5px;
+  padding-bottom: 2px;
+}
+
+.cal .day {
+  padding: 5px 0;
+  border-radius: 7px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.cal .day.today {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.cal .day.has {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.cal .day.blank {
+  background: transparent;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border-radius: 9px;
+  background: var(--bubble);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.item .grow {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item .dim {
+  color: var(--dim);
+  font-size: 10.5px;
+}
+
+.item button {
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.item button:hover {
+  color: var(--ink);
+}
+
+.qr {
+  align-self: center;
+  padding: 8px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.qr svg {
+  display: block;
+  width: 168px;
+  height: 168px;
+}
+
+.swatch {
+  width: 100%;
+  height: 54px;
+  border-radius: 10px;
+  border: 1px solid var(--rim);
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.45;
+}
+
 /* footer ---------------------------------------------------------------- */
 
 .foot {
   border-top: 1px solid var(--rim);
   padding: 7px 12px 12px;
+  flex: none;
 }
 
 .stats {

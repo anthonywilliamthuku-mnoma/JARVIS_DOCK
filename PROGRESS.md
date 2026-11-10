@@ -30,11 +30,24 @@ Single source of truth for LEON. Re-read at the start of every session.
   - Not yet seen on Windows: the native window is transparent and frameless, so
     the capsule's corners are composited by the desktop (unverified on this PC).
 
+- **Tool tiles (D-013), wave 1:** a Chat/Tools tab pair and a bento grid of 12 tiles backed by `leond/tools.py`. Working end to end: keep awake, timer/stopwatch, calculator (percentages, powers, factorial, hex/binary, units, temperatures), system monitor, calendar, QR codes, clipboard (memory only), notes, quick launch, colour picker. Voice memo is coded against `sounddevice` but unverified; the text extractor reports its missing dependency and is not wired up.
+- **Verified on 2026-11-10 (tools):**
+  - `pytest` 81 passed, including `tests/test_tools.py` (calculator, calendar
+    round-trip and rejection, QR, notes, launch refusals, platform fallbacks).
+  - `ruff check`, `ruff format --check` and `mypy --platform win32` clean.
+  - The grid, the system meters and the calendar month view were rendered in a
+    browser with mocked bridge data and inspected; two layout bugs were found
+    and fixed there (the grid stayed visible under a tool page, and the glyph
+    column picked up colour emoji).
+
 ## In progress
 - Phase 1 (brain and core loop) is essentially complete for a single-user dock.
+- Nook module parity: 10 of its modules are ported; see the parity table in `README.md` for the rest.
 
 ## Next 5 actions
-1. Add a global summon hotkey (`Win+Alt+L`) with a small Win32 `RegisterHotKey`
+1. Wave 2 of the tools: media (SMTC) and text extraction (screen capture plus
+   `winsdk` OCR), then voice memo verified on real hardware.
+2. Add a global summon hotkey (`Win+Alt+L`) with a small Win32 `RegisterHotKey`
    wrapper, since pywebview has no API for one.
 2. Persist the conversation in SQLite so closing the island does not forget it.
 3. Add a tray icon with Show / Kill switch, so LEON can be stopped without the

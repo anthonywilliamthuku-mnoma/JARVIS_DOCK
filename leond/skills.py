@@ -65,7 +65,7 @@ def _system_report(args: dict[str, Any]) -> str:
 
 # Only these names can be launched. Anything else is refused, so a model slip
 # cannot become "start this executable".
-_APPS: dict[str, str] = {
+APPS: dict[str, str] = {
     "notepad": "notepad.exe",
     "calculator": "calc.exe",
     "calc": "calc.exe",
@@ -86,18 +86,18 @@ def _open_app(args: dict[str, Any]) -> str:
     wanted = _arg(args, "app").lower()
     if not wanted:
         raise SkillError("no application name was given")
-    target = _APPS.get(wanted)
+    target = APPS.get(wanted)
     if target is None:
-        match = next((value for key, value in _APPS.items() if wanted in key), "")
+        match = next((value for key, value in APPS.items() if wanted in key), "")
         target = match
     if not target:
-        allowed = ", ".join(sorted({key for key in _APPS if key != "calc"}))
+        allowed = ", ".join(sorted({key for key in APPS if key != "calc"}))
         raise SkillError(f"'{wanted}' is not on the launch list. Allowed: {allowed}")
     try:
         if target.endswith(":"):
             os.startfile(target)  # noqa: S606 - fixed Windows protocol target
         else:
-            subprocess.Popen([target])  # noqa: S603 - value comes from _APPS only
+            subprocess.Popen([target])  # noqa: S603 - value comes from APPS only
     except OSError as exc:
         raise SkillError(f"could not start {wanted}: {exc.strerror or exc}") from exc
     return f"Started {wanted}."
