@@ -1,3 +1,3 @@
-"""leond: the LEON core service."""
+"""leond: the LEON core service and dock."""
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LEON</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="dock" id="dock">
+      <header class="bar">
+        <span class="dot" id="dot" aria-hidden="true"></span>
+        <span class="wordmark">LEON</span>
+        <span class="model" id="model">connecting…</span>
+        <span class="spacer"></span>
+        <button class="ghost" id="minimise" title="Minimise" aria-label="Minimise">–</button>
+        <button class="ghost" id="close" title="Close" aria-label="Close">×</button>
+      </header>
+
+      <section class="thread" id="thread" aria-live="polite">
+        <article class="intro" id="intro">
+          <h1>Hello, I am LEON.</h1>
+          <p>
+            I run on this PC, on your own model. Ask me anything — my reply is
+            typed out as the model produces it.
+          </p>
+        </article>
+      </section>
+
+      <footer class="foot">
+        <div class="thinking" id="thinking" hidden>
+          <i></i><i></i><i></i>
+        </div>
+        <div class="stats" id="stats">ready</div>
+        <form class="composer" id="composer" autocomplete="off">
+          <textarea
+            id="input"
+            rows="1"
+            placeholder="Ask LEON…"
+            spellcheck="false"
+            aria-label="Message LEON"
+          ></textarea>
+          <button class="send" id="send" type="submit" title="Send" aria-label="Send">
+            ↑
+          </button>
+          <button class="stop" id="stop" type="button" title="Stop (Esc)" aria-label="Stop" hidden>
+            ■
+          </button>
+        </form>
+      </footer>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

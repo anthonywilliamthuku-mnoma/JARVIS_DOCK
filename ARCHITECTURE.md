@@ -1,17 +1,19 @@
 # LEON architecture
 
 LEON is a local-first PC agent. A Python core service (`leond`) plans and runs
-tasks through skills. A compact dock UI (Tauri 2 + React) is the main way to talk
-to it and to see what it is doing. Admin work goes through a separate elevated
-helper that starts only after a real Windows UAC prompt.
+tasks through skills. A compact dock is the main way to talk to it and to see
+what it is doing. Admin work goes through a separate elevated helper that starts
+only after a real Windows UAC prompt.
 
-Status: Phase 0 (foundations). Only the package skeleton exists. The components
-below are the target design; they are built in later phases (see `PROGRESS.md`).
+Status: Phase 0 done, Phase 1 in progress. The dock exists: one Python process
+hosting a frameless always-on-top WebView2 window (see D-008), with the brain,
+config, policy skeleton and audit log behind it. Skills, approvals and the
+elevated helper are still target design.
 
 ## Components
 
 ```
-Dock UI (Tauri/React)  <--JSON-RPC over WebSocket, loopback + token-->  leond (core service)
+Dock UI (HTML/CSS/JS)  <------- in-process bridge, no port -------->  leond (core service)
                                                                         |- Brain (LLM providers, router)
                                                                         |- Agent loop / task manager
                                                                         |- Skill registry (hot reload)
@@ -28,9 +30,9 @@ Dock UI (Tauri/React)  <--JSON-RPC over WebSocket, loopback + token-->  leond (c
 
 | Component | Phase | Notes |
 |---|---|---|
-| `leond` core | 1+ | Python 3.12, async, typed with pydantic |
+| `leond` core | 1 | Python 3.12, typed, stdlib HTTP to the local model |
 | Skill framework | 2 | Progressive disclosure, tiers enforced by core |
-| Dock | 5 | Tauri 2 + React + TypeScript, frameless, always on top |
+| Dock | 1 | pywebview + vanilla HTML/CSS/JS, frameless, always on top (D-008) |
 | `leon-elevated` | 4 | Allowlisted, schema-validated operations only |
 
 ## Privilege model
@@ -64,4 +66,5 @@ These sequence diagrams are added with the phase that implements each flow.
 - Reversible by default: Recycle Bin for deletes, restore point or export before risky system changes.
 - Untrusted content (web, files, email, OCR, clipboard, tool output) is data, never instructions.
 - Secrets live in Windows Credential Manager (DPAPI), never in the repo or logs.
-- Local IPC is loopback only and token-authenticated.
+- No network surface: the dock talks to the core in-process, and the only
+  outbound call is to a loopback model endpoint.
