@@ -408,8 +408,8 @@ body.open .tabs {
   min-height: 0;
   overflow-y: auto;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  grid-auto-rows: 54px;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 52px;
   gap: 5px;
   padding: 5px 8px;
   scrollbar-width: thin;
@@ -426,8 +426,8 @@ body.open .tabs {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 3px;
-  padding: 5px 4px;
+  gap: 2px;
+  padding: 4px 3px;
   border: 1px solid var(--rim);
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
@@ -450,9 +450,10 @@ body.open .tabs {
   transform: scale(0.97);
 }
 
-/* Six across and two rows: twelve tiles fit the open panel without scrolling. */
+/* Seven across and two rows: all thirteen tiles fit without scrolling. A long
+   label wraps onto a second line rather than being cut off. */
 .tile .glyph {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
   color: var(--accent);
 }
@@ -460,8 +461,12 @@ body.open .tabs {
 .tile .name {
   max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-align: center;
+  line-height: 1.1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
   font-size: 9px;
   font-weight: 600;
 }
@@ -728,6 +733,74 @@ body.open .tabs {
 
 .item button:hover {
   color: var(--ink);
+}
+
+/* media: now playing and its lyric line --------------------------------- */
+
+.mediabar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.mediabar .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.mediabar .toolrow {
+  flex: none;
+  flex-wrap: nowrap;
+}
+
+.track {
+  font-size: 11.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artist {
+  font-size: 10px;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lyrics {
+  flex: 1;
+  min-height: 34px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.ly {
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ly.on {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.lyrform {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+}
+
+.lyrform[hidden] {
+  display: none;
 }
 
 .qr {

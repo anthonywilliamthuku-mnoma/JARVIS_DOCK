@@ -29,7 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from leond import facts, skills
+from leond import facts, media, skills
 from leond.config import config_dir
 from leond.policy import Tier, check
 
@@ -61,7 +61,8 @@ TOOLS: tuple[Tool, ...] = (
     Tool("launch", "Quick launch", "▶", "wide", "Apps, folders and settings pages.", Tier.ACT),
     Tool("colour", "Colour picker", "◉", "small", "Copy the colour under the cursor.", Tier.ACT),
     Tool("voice", "Voice memo", "●", "small", "Record the microphone to WAV.", Tier.ACT),
-    Tool("ocr", "Text extractor", "⌗", "small", "Read text off the screen.", Tier.ACT),
+    Tool("ocr", "Text", "⌗", "small", "Read text off the screen.", Tier.ACT),
+    Tool("media", "Media", "♪", "wide", "Now playing, with synced lyrics."),
 )
 
 _INDEX = {tool.id: tool for tool in TOOLS}
@@ -797,6 +798,17 @@ def _act_voice(action: str, arg: str) -> dict[str, Any]:
     return record_voice(seconds)
 
 
+def _act_media(action: str, arg: str) -> dict[str, Any]:
+    """Now playing, its transport buttons, and the lyric line for this second."""
+    if action == "lines":
+        return media.lines()
+    if action == "save":
+        return media.save_lyrics(arg)
+    if action in ("playpause", "next", "previous"):
+        return media.control(action)
+    return media.state()
+
+
 def _act_ocr(action: str, arg: str) -> dict[str, Any]:
     missing = _missing("ocr")
     if missing is not None:
@@ -816,6 +828,7 @@ _HANDLERS: dict[str, Any] = {
     "colour": _act_colour,
     "voice": _act_voice,
     "ocr": _act_ocr,
+    "media": _act_media,
 }
 
 
@@ -827,7 +840,11 @@ def act(tool_id: str, action: str, arg: str = "") -> dict[str, Any]:
     if handler is None:
         return {"ok": False, "error": f"there is no tool called '{tool_id}'"}
     tool = _INDEX[tool_id]
-    decision = check(f"{tool_id} {arg}".strip(), tool.tier)
+    # A pasted lyric sheet is the user's data, not an instruction, so the policy
+    # reads the action rather than the text: a song title cannot trip the
+    # prompt-injection guard and block its own save.
+    subject = tool_id if (tool_id == "media" and action == "save") else f"{tool_id} {arg}".strip()
+    decision = check(subject, tool.tier)
     if not decision.allowed:
         return {"ok": False, "error": f"refused: {decision.reason}"}
     try:
@@ -896,6 +913,8 @@ def state(tool_id: str) -> dict[str, Any]:
         return {"ok": True, "notes": note_list()}
     if tool_id == "colour":
         return {"ok": True, "colour": _last_colour}
+    if tool_id == "media":
+        return media.state()
     if tool_id in _NEEDS:
         missing = _missing(tool_id)
         if missing is not None:

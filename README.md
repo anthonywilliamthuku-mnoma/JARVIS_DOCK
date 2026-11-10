@@ -55,8 +55,13 @@ and what LEON is doing, and nothing else.
 
 - **Hover** it and it opens after a 120 ms debounce; move away and it folds
   after 250 ms.
-- **Click** it to pin it open. Click again, or press **Esc**, to fold it.
-- Open, it grows downwards into a 470 × 170 panel: the header row keeps the clock, the state and the Chat/Tools switch, and the tiles shrink to a six-across, two-row grid so the whole panel fits without scrolling.
+- **Click** it to pin it open, and click anything inside the panel to keep it
+  open the same way. Click the capsule again, or press **Esc**, to fold it.
+- Open, it grows downwards into a 470 × 170 panel: the header row keeps the
+  clock, the state and the Chat/Tools switch, and the tiles shrink to a
+  seven-across, two-row grid so the whole panel fits without scrolling.
+- Hovering never takes the keyboard: only a click focuses the message box, so a
+  hovered dock can still fold itself when you move away.
 - It stays open while a reply is streaming, while you type, and while an
   approval card is waiting — it will not fold under your hands.
 
@@ -111,11 +116,27 @@ engine and written to the audit log (the log records the call, never your text).
 | Quick launch | Allowlisted apps, URLs, `ms-settings:` pages and existing folders |
 | Colour picker | Reads the pixel under the cursor and copies the hex |
 | Voice memo | Records the microphone to `Music\Voice memos` |
-| Text extractor | Screen OCR |
+| Text | Screen OCR |
+| Media | The track Windows is playing, its buttons, and its lyric line in sync |
 
-Voice memo needs `uv add sounddevice`; the text extractor needs `uv add winsdk`
-and its OCR pass is **not wired up yet** — the tile says so rather than
-pretending. Everything else runs on the standard library.
+Voice memo needs `uv add sounddevice`; Text needs `uv add winsdk` and its OCR
+pass is **not wired up yet** — the tile says so rather than pretending. Media
+needs the same package, which is what LEON uses to read the system media
+session. Everything else runs on the standard library.
+
+## Lyrics, in sync
+
+The Media tile reads whatever player Windows is showing in its media flyout,
+asks the session for the playhead, and highlights the lyric line that belongs to
+that second. LEON never downloads lyrics — they are copyrighted and the dock is
+offline — so it reads your own `.lrc` files from `%APPDATA%\LEON\lyrics`, matched
+as `Artist - Title.lrc`. Press **Lyrics** in the tile, paste a timestamped file,
+and LEON stores it for that track and reuses it next time.
+
+```
+[00:12.34] first line
+[00:17.90] the next one
+```
 
 ## Nook 0.4.2 parity
 
@@ -128,7 +149,8 @@ because they are written in Rust against Win32, DWM, `Windows.UI.Composition`,
 | Pill clock, hover/pin shell, glass | Done |
 | Keep awake, timer, calculator, calendar, QR, clipboard, quick launch, colour picker, system monitor, notes | Done |
 | Voice memo | Code present, needs `sounddevice`, unverified on hardware |
-| Text extractor (OCR), media (SMTC) | Not implemented; needs `winsdk` |
+| Media (SMTC) with synced lyrics | Session read, transport and lyric sync written; needs `winsdk`, unverified on hardware |
+| Text extractor (OCR) | Not implemented; needs `winsdk` |
 | Settings page, tray icon, global hotkey | Not implemented |
 | Phone link (adb/scrcpy, LocalSend) | Not implemented; needs external binaries |
 | Wallpaper, draw on screen, Lens search, font detector | Not implemented |
@@ -144,6 +166,8 @@ leond/
   brain.py      streaming client for local OpenAI-compatible servers, with tools
   skills.py     what LEON can do, each with a tier and a JSON schema
   tools.py      the tile grid's backends (Nook's utilities, rebuilt)
+  media.py      now playing from the Windows media session, transport buttons
+  lyrics.py     .lrc parsing, the line for a given second, and the file store
   agent.py      one turn: check policy, ask if needed, run the skill, answer
   policy.py     permission tiers and the hard-deny list
   audit.py      hash-chained audit log

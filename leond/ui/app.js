@@ -20,6 +20,7 @@ const el = {
   clock: document.getElementById("clock"),
   dot: document.getElementById("dot"),
   toggle: document.getElementById("toggle"),
+  panel: document.getElementById("panel"),
   approval: document.getElementById("approval"),
   chips: document.getElementById("chips"),
   askWhy: document.getElementById("askWhy"),
@@ -44,13 +45,18 @@ function api() {
 
 /* island ---------------------------------------------------------------- */
 
-async function setOpen(next) {
-  if (open === next) return;
+/* `focus` is only ever asked for by a click. If hover focused the box, the
+   dock could never fold itself again: canFold() keeps a focused composer. */
+async function setOpen(next, { focus = false } = {}) {
+  if (open === next) {
+    if (next && focus) el.input.focus();
+    return;
+  }
   open = next;
   document.body.classList.toggle("open", next);
   await api()?.set_open(next);
-  if (next) el.input.focus();
-  else el.input.blur();
+  if (next && focus) el.input.focus();
+  else if (!next) el.input.blur();
 }
 
 function canFold() {
@@ -84,7 +90,7 @@ function togglePin() {
     return;
   }
   pinned = true;
-  setOpen(true);
+  setOpen(true, { focus: true });
 }
 
 el.pill.addEventListener("mouseenter", hoverOpen);
@@ -100,6 +106,17 @@ el.pill.addEventListener("click", (event) => {
 el.toggle.addEventListener("click", (event) => {
   event.stopPropagation();
   togglePin();
+});
+
+/* Touching anything inside the open panel means the user is using it, so the
+   dock stays out of the way until Escape. */
+el.panel.addEventListener("click", () => {
+  clearTimeout(timer);
+  pinned = true;
+});
+
+el.input.addEventListener("focus", () => {
+  pinned = true;
 });
 
 /* clock ----------------------------------------------------------------- */
@@ -224,7 +241,7 @@ async function send() {
   el.input.value = "";
   resize();
   pinned = true;
-  if (!open) await setOpen(true);
+  if (!open) await setOpen(true, { focus: true });
   current = addTurn("leon", "");
   setBusy(true);
   el.state.textContent = "thinking…";
@@ -800,6 +817,142 @@ const RENDERERS = {
       hint("Reading text off the screen needs Windows OCR: `uv add winsdk`."),
       hint("Until then this tile is a placeholder; the OCR pass is not wired up yet."),
     );
+  },
+
+  /* Now playing, with the lyric line that belongs to this second. Python does
+     the matching: the page only highlights the index it is given. */
+  media(body, payload) {
+    const title = h("div", { className: "track" }, "Media");
+    const sub = h("div", { className: "artist" }, "");
+    const list = h("div", { className: "lyrics" });
+    const note = hint("");
+    const area = h("textarea", {
+      className: "field",
+      rows: 4,
+      spellcheck: false,
+      placeholder: "[00:12.34] first line\n[00:17.90] the next one",
+    });
+    const form = h("div", { className: "lyrform", hidden: true });
+    let key = null;
+    let index = -2;
+    let polling = false;
+
+    const paintActive = () => {
+      [...list.children].forEach((node, at) => node.classList.toggle("on", at === index));
+      const active = list.children[index];
+      if (!active || !active.classList.contains("ly")) return;
+      // Centre the current line, but only when it is not already in view,
+      // so a short lyric sheet does not scroll at all.
+      const view = list.getBoundingClientRect();
+      const line = active.getBoundingClientRect();
+      if (line.top < view.top || line.bottom > view.bottom) {
+        list.scrollTop += line.top - view.top - (list.clientHeight - line.height) / 2;
+      }
+    };
+
+    async function paintLines() {
+      const result = await run("media", "lines");
+      if (!result.ok) {
+        list.replaceChildren(hint(result.error));
+        return;
+      }
+      list.replaceChildren(
+        ...result.lines.map((text) => h("div", { className: "ly" }, text || "·")),
+      );
+      if (!result.lines.length) list.append(hint("No lyrics saved for this track yet."));
+      index = result.index;
+      paintActive();
+    }
+
+    function paint(data) {
+      if (!data.ok) {
+        sub.textContent = "";
+        note.textContent = data.error;
+        list.replaceChildren();
+        return;
+      }
+      const track = data.track;
+      title.textContent = track && track.title ? track.title : "Nothing playing";
+      sub.textContent = track ? [track.artist, track.album].filter(Boolean).join(" · ") : "";
+      play.textContent = data.playing ? "Pause" : "Play";
+      note.textContent = track ? "" : "Start something in your player, then reopen this tile.";
+      if (data.lyrics.key !== key) {
+        key = data.lyrics.key;
+        paintLines();
+      } else if (data.lyrics.index !== index) {
+        index = data.lyrics.index;
+        paintActive();
+      }
+    }
+
+    const refresh = async () => {
+      if (polling) return;
+      polling = true;
+      try {
+        paint(await run("media", "state"));
+      } finally {
+        polling = false;
+      }
+    };
+
+    const skip = async (action) => {
+      await run("media", action);
+      refresh();
+    };
+
+    const play = button("Play", () => skip("playpause"), "primary act");
+
+    form.append(
+      area,
+      h(
+        "div",
+        { className: "toolrow" },
+        button(
+          "Save lyrics",
+          async () => {
+            const result = await run("media", "save", area.value);
+            note.textContent = result.ok
+              ? `Saved ${result.saved} lines to ${result.file}.`
+              : result.error;
+            if (result.ok) {
+              form.hidden = true;
+              key = null;
+              refresh();
+            }
+          },
+          "primary act",
+        ),
+        button("Cancel", () => {
+          form.hidden = true;
+        }),
+      ),
+      hint("Paste an .lrc for this track once; LEON keeps it in its lyrics folder and reuses it."),
+    );
+
+    body.append(
+      h(
+        "div",
+        { className: "mediabar" },
+        h("div", { className: "grow" }, title, sub),
+        h(
+          "div",
+          { className: "toolrow" },
+          button("‹", () => skip("previous")),
+          play,
+          button("›", () => skip("next")),
+          button("Lyrics", () => {
+            form.hidden = !form.hidden;
+            if (!form.hidden) area.focus();
+          }),
+        ),
+      ),
+      list,
+      note,
+      form,
+    );
+
+    paint(payload);
+    TOOLS.poll = setInterval(refresh, 500);
   },
 };
 

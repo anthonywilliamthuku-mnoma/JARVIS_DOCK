@@ -40,6 +40,17 @@ Single source of truth for LEON. Re-read at the start of every session.
     and fixed there (the grid stayed visible under a tool page, and the glyph
     column picked up colour emoji).
 
+- **Hovering opens the dock, clicking keeps it open (D-012):** the hover path no
+  longer focuses the message box, which is what used to make a hovered dock
+  impossible to fold again — `canFold()` refuses while the composer has focus.
+  Focus now follows a click (or typing), and clicking anywhere in the open panel
+  pins it.
+- **Media tile with synced lyrics (D-014):** now playing and its transport
+  buttons come from the Windows media session (`winsdk`, SMTC); the playhead
+  comes from the session timeline, and the lyric line that belongs to that
+  second is highlighted. Lyrics are the user's own `.lrc` files in
+  `%APPDATA%\LEON\lyrics` (`Artist - Title.lrc`), pasted once from the tile's
+  **Lyrics** box. Nothing is downloaded.
 - **The open panel is 470 x 170, and the tiles were shrunk to fit it:** the
   Chat/Tools switch moved into the header row, the grid is six across and two
   rows (all twelve tiles, no scrolling, 9 px labels that do not clip), and the
@@ -60,6 +71,18 @@ Single source of truth for LEON. Re-read at the start of every session.
   - **Not launched here:** this is a Linux VM with no display and no GTK/QT, so
     `uv run leon` stops in `webview.initialize()` before a window exists. The
     native window, transparency and hover-open still need the user's PC.
+- **Verified on 2026-11-10 (hover and media), in a browser with a mocked
+  bridge that resizes the frame like the native window does:**
+  - hover expands 223 x 43 to 470 x 170 without focusing the composer, leaving
+    folds it back after the 250 ms grace, and a click keeps it open after the
+    pointer leaves; clicking the panel pins it too.
+  - the grid draws 13 tiles in two rows at 470 x 170 with no scrolling, no
+    horizontal overflow and no clipped labels (long ones wrap to a second line).
+  - the Media tile renders track, artist, buttons and lyric lines, and its
+    highlighted line advances as the mocked playhead moves (index 2 to 3).
+  - **Not verified on hardware:** the SMTC read, the transport buttons and the
+    playhead all need Windows and a player; `tests/test_lyrics.py` covers the
+    parsing, the line matching and the file store instead.
 
 ## In progress
 - Phase 1 (brain and core loop) is essentially complete for a single-user dock.
