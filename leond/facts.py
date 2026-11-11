@@ -134,10 +134,33 @@ def system_report() -> str:
 
 def snapshot() -> str:
     """A compact block for the system prompt."""
-    return (
+    window = foreground_window()
+    lines = [
         "Facts read from this PC right now. Use them instead of guessing; do not "
-        "invent a different time, place or amount.\n"
-        f"- Local time: {local_time()}\n"
-        f"- Place: {local_place()}\n"
-        f"- System: {system_report().replace(chr(10), ' | ')}"
-    )
+        "invent a different time, place or amount.",
+        f"- Local time: {local_time()}",
+        f"- Place: {local_place()}",
+        f"- System: {system_report().replace(chr(10), ' | ')}",
+    ]
+    if window:
+        lines.append(f"- Window in front: {window}")
+    return "\n".join(lines)
+
+
+def foreground_window() -> str:
+    """The title of the window in front, without importing the screen module
+    (which pulls in WinRT) just to ask."""
+    windll = getattr(ctypes, "windll", None)
+    user32 = getattr(windll, "user32", None) if windll is not None else None
+    if user32 is None:
+        return ""
+    try:
+        handle = user32.GetForegroundWindow()
+        if not handle:
+            return ""
+        length = int(user32.GetWindowTextLengthW(handle))
+        buffer = ctypes.create_unicode_buffer(length + 2)
+        user32.GetWindowTextW(handle, buffer, length + 1)
+    except OSError:
+        return ""
+    return buffer.value.strip()[:120]

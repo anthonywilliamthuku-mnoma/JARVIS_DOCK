@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from leond import facts
+from leond import attention, facts, inbox, screen
 from leond.policy import Tier
 
 MAX_OUTPUT = 1800
@@ -155,6 +155,54 @@ def _run_powershell(args: dict[str, Any]) -> str:
     return output or error or f"PowerShell exited {completed.returncode} with no output."
 
 
+def _look_at_screen(args: dict[str, Any]) -> str:
+    found = screen.text()
+    if not found.get("ok"):
+        raise SkillError(str(found.get("error") or "the screen could not be read"))
+    window = str(found.get("window") or "the front window")
+    body = str(found.get("text") or "")
+    if not body:
+        return f"I looked at {window}. {found.get('message') or 'Nothing readable was there.'}"
+    return f"Text in {window}:\n{body[:1800]}"
+
+
+def _save_screenshot(args: dict[str, Any]) -> str:
+    shot = screen.capture()
+    if not shot.get("ok"):
+        raise SkillError(str(shot.get("error") or "the screen could not be copied"))
+    return f"Saved the screen to {shot['path']} ({shot['width']}x{shot['height']})."
+
+
+def _type_text(args: dict[str, Any]) -> str:
+    body = _arg(args, "text")
+    if not body:
+        raise SkillError("there was nothing to type")
+    result = screen.type_text(body)
+    if not result.get("ok"):
+        raise SkillError(str(result.get("error") or "typing failed"))
+    return f"Typed {result.get('typed', 0)} characters into the window in front."
+
+
+def _click_at(args: dict[str, Any]) -> str:
+    try:
+        x = int(float(_arg(args, "x")))
+        y = int(float(_arg(args, "y")))
+    except ValueError:
+        raise SkillError("x and y must be numbers") from None
+    result = screen.click(x, y)
+    if not result.get("ok"):
+        raise SkillError(str(result.get("error") or "the click did not land"))
+    return f"Clicked at {x},{y}."
+
+
+def _get_attention(args: dict[str, Any]) -> str:
+    return attention.ask(_arg(args, "reason")).sentence()
+
+
+def _held_files(args: dict[str, Any]) -> str:
+    return inbox.describe()
+
+
 SKILLS: dict[str, Skill] = {
     "local_time": Skill(
         name="local_time",
@@ -203,6 +251,69 @@ SKILLS: dict[str, Skill] = {
         },
         tier=Tier.ACT,
         run=_write_note,
+    ),
+    "look_at_screen": Skill(
+        name="look_at_screen",
+        description=(
+            "Read what is on this PC's screen: the front window's title and the words and "
+            "controls it shows. Use it when the user refers to what they can see."
+        ),
+        parameters={"type": "object", "properties": {}, "required": []},
+        tier=Tier.OBSERVE,
+        run=_look_at_screen,
+    ),
+    "list_held_files": Skill(
+        name="list_held_files",
+        description="List the files sitting in the dock's inbox folder.",
+        parameters={"type": "object", "properties": {}, "required": []},
+        tier=Tier.OBSERVE,
+        run=_held_files,
+    ),
+    "save_screenshot": Skill(
+        name="save_screenshot",
+        description="Save a picture of the whole screen into LEON's own folder.",
+        parameters={"type": "object", "properties": {}, "required": []},
+        tier=Tier.ACT,
+        run=_save_screenshot,
+    ),
+    "get_attention": Skill(
+        name="get_attention",
+        description=(
+            "Pause whatever is playing, ping, and glow the island until the user answers. "
+            "Use it only when the user asked to be interrupted."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {"reason": {"type": "string", "description": "One short line to show"}},
+            "required": [],
+        },
+        tier=Tier.ACT,
+        run=_get_attention,
+    ),
+    "type_text": Skill(
+        name="type_text",
+        description="Type text into the window that is in front, as the keyboard would.",
+        parameters={
+            "type": "object",
+            "properties": {"text": {"type": "string", "description": "Text to type"}},
+            "required": ["text"],
+        },
+        tier=Tier.SENSITIVE,
+        run=_type_text,
+    ),
+    "click_at": Skill(
+        name="click_at",
+        description="Left-click once at a screen position, x from the left and y from the top.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "x": {"type": "number", "description": "Pixels from the left edge"},
+                "y": {"type": "number", "description": "Pixels from the top edge"},
+            },
+            "required": ["x", "y"],
+        },
+        tier=Tier.SENSITIVE,
+        run=_click_at,
     ),
     "run_powershell": Skill(
         name="run_powershell",
@@ -276,6 +387,14 @@ def describe(name: str, args: dict[str, Any]) -> str:
     if name == "write_note":
         first_line = (_arg(args, "text").splitlines() or ["note"])[0][:40]
         return f"save note: {_arg(args, 'title') or first_line}"
+    if name == "type_text":
+        return f"type: {_arg(args, 'text')[:60]}"
+    if name == "click_at":
+        return f"click at {_arg(args, 'x')},{_arg(args, 'y')}"
+    if name == "get_attention":
+        return f"ping you: {_arg(args, 'reason') or 'may I have a moment?'}"
+    if name == "save_screenshot":
+        return "save a picture of the screen"
     return name
 
 

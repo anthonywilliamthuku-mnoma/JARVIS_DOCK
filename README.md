@@ -50,8 +50,29 @@ Speed depends mostly on the CPU and on how much memory is free; no GPU is used.
 ## The dock
 
 The dock is a glass capsule **223 × 43** pinned to the top centre of the
-screen, flush with the edge like a notch. It carries a live clock, a status dot
-and what LEON is doing, and nothing else.
+screen, flush with the edge like a notch. It carries a live clock, a face, a
+status pip and what LEON is doing, and nothing else.
+
+### The face
+
+Six moods, drawn as inline SVG and small enough for the capsule: a grey drop
+(calm), a blue triangle (alert), an orange blob (glad), a black circle, a green
+pill (listening) and a brown flower (thinking). The face blinks, drifts a few
+pixels and turns its eyes toward the pointer, wherever the pointer is on the
+desktop. Opened, the same face appears again as a round face in the top-right
+corner, and only while the dock is open.
+
+What it shows comes from `leond/mood.py`, in this order:
+
+| The PC is… | The island shows |
+|---|---|
+| asking for you (a ping) | alert face, and a glow that pulses with the ping |
+| answering a question | thinking face |
+| playing a song with a lyric line | the face hides and a ♪ stays, until playback stops |
+| playing anything else (a video, a call) | a waveform that follows the speakers |
+| holding files for LEON | glad face, and how many |
+| making a sound with no media session | the waveform |
+| quiet | calm face, watching the pointer |
 
 - **Hover** it and it opens after a 120 ms debounce; move away and it folds
   after 250 ms.
@@ -77,6 +98,15 @@ HTML/CSS, not Nook's Rust code, so the dock stays a single Python process.
   space. Ask "what time is it" and the answer comes from the PC, not the model.
 - **Real tasks.** The model can call the skills below, and each call is checked
   by the policy engine first.
+- **It can see the screen.** `look_at_screen` reads the front window's title and
+the words and controls in it (UI Automation), falling back to OCR and then to a
+saved screenshot. `type_text` and `click_at` let it act on what it sees; both
+need an Allow card.
+- **It can get your attention.** `get_attention` pauses whatever is playing,
+pings twice, glows the island in time with the ping, and resumes the music when
+you touch the dock.
+- **It reacts to sound.** The waveform follows the speakers (WASAPI loopback),
+so a class, a video or a song all move it — not just the media session.
 - Streaming replies, typed out as the model produces them.
 - A live status line with time to first word and tokens per second.
 - Stop button and Esc, which close the connection instead of waiting.
@@ -91,6 +121,12 @@ HTML/CSS, not Nook's Rust code, so the dock stays a single Python process.
 | `open_app` | T1 | Opens an app from a fixed allowlist (Notepad, Calculator, Explorer…) |
 | `write_note` | T1 | Saves a Markdown note under `%APPDATA%\LEON\notes` |
 | `run_powershell` | T2 | Runs a command — **only after you press Allow** |
+| `look_at_screen` | T0 | The front window's title, words and controls |
+| `list_held_files` | T0 | What is sitting in the dock's inbox folder |
+| `save_screenshot` | T1 | Saves a picture of the screen to LEON's folder |
+| `get_attention` | T1 | Pauses playback, pings, glows, and resumes |
+| `type_text` | T2 | Types into the front window — **Allow required** |
+| `click_at` | T2 | Clicks at a screen position — **Allow required** |
 
 T0 skills run immediately. T2 actions raise an approval card in the island
 showing the exact command; an unanswered card is a refusal, and the hard-deny
@@ -116,19 +152,29 @@ engine and written to the audit log (the log records the call, never your text).
 | Quick launch | Allowlisted apps, URLs, `ms-settings:` pages and existing folders |
 | Colour picker | Reads the pixel under the cursor and copies the hex |
 | Voice memo | Records the microphone to `Music\Voice memos` |
-| Text | Screen OCR |
+| Screen | The front window's words, or a picture of the whole screen |
 | Media | The track Windows is playing, its buttons, and its lyric line in sync |
 
-Voice memo needs `uv add sounddevice`; Text needs `uv add winsdk` and its OCR
-pass is **not wired up yet** — the tile says so rather than pretending. Media
-needs the same package, which is what LEON uses to read the system media
-session. Everything else runs on the standard library.
+The Windows-only pieces ship as optional wheels that only install on Windows:
+`winrt-windows-media-control` (the media session), `winrt-windows-media-ocr`
+(screen pixels, where Windows allows it), `pyaudiowpatch` (the speakers' loopback
+for the waveform) and `pycaw` (the volume slider). Voice memo additionally needs
+`uv add sounddevice`. Everything else runs on the standard library and
+`ctypes`.
+
+**On this PC** `Windows.Media.Ocr` answers *Class not registered* — the OCR
+namespace needs MSIX package identity, which a plain `uv run` app does not have.
+The Screen tile therefore reads UI Automation first, which needs no identity and
+returns the real control labels; OCR is the fallback where it works, and a
+screenshot is the last resort (D-017).
 
 ## Lyrics, in sync
 
-The Media tile reads whatever player Windows is showing in its media flyout,
-asks the session for the playhead, and highlights the lyric line that belongs to
-that second. LEON never downloads lyrics — they are copyrighted and the dock is
+The Media tile is Nook's player, rebuilt: the session's artwork, track and
+artist, a scrub bar with both times (click to seek), previous / play-pause /
+next, a volume slider with its number, and the lyric sheet underneath. It reads
+whatever player Windows is showing in its media flyout, asks the session for the
+playhead, and highlights the lyric line that belongs to that second. LEON never downloads lyrics — they are copyrighted and the dock is
 offline — so it reads your own `.lrc` files from `%APPDATA%\LEON\lyrics`, matched
 as `Artist - Title.lrc`. Press **Lyrics** in the tile, paste a timestamped file,
 and LEON stores it for that track and reuses it next time.
@@ -150,7 +196,8 @@ because they are written in Rust against Win32, DWM, `Windows.UI.Composition`,
 | Keep awake, timer, calculator, calendar, QR, clipboard, quick launch, colour picker, system monitor, notes | Done |
 | Voice memo | Code present, needs `sounddevice`, unverified on hardware |
 | Media (SMTC) with synced lyrics | Session read, transport and lyric sync written; needs `winsdk`, unverified on hardware |
-| Text extractor (OCR) | Not implemented; needs `winsdk` |
+| Text extractor (OCR) | Screen tile: UI Automation first, OCR and screenshot as fallbacks |
+| Island moods, faces, waveform | Done — six faces, mouse-following eyes, loopback waveform |
 | Settings page, tray icon, global hotkey | Not implemented |
 | Phone link (adb/scrcpy, LocalSend) | Not implemented; needs external binaries |
 | Wallpaper, draw on screen, Lens search, font detector | Not implemented |
@@ -166,8 +213,16 @@ leond/
   brain.py      streaming client for local OpenAI-compatible servers, with tools
   skills.py     what LEON can do, each with a tier and a JSON schema
   tools.py      the tile grid's backends (Nook's utilities, rebuilt)
-  media.py      now playing from the Windows media session, transport buttons
+  media.py      now playing from the Windows media session: artwork, transport,
+                seek, volume, and the lyric line for this second
   lyrics.py     .lrc parsing, the line for a given second, and the file store
+  mood.py       which face LEON wears, and what the island shows
+  audio.py      the speakers' loopback level, for the waveform
+  cursor.py     where the pointer is, for the eyes
+  screen.py     screen capture, UI Automation/OCR text, typing and clicking
+  attention.py  pause, ping, glow, wait for an answer, put the music back
+  inbox.py      files left on the dock
+  winrt.py      the WinRT namespaces, and the one thread that owns them
   agent.py      one turn: check policy, ask if needed, run the skill, answer
   policy.py     permission tiers and the hard-deny list
   audit.py      hash-chained audit log

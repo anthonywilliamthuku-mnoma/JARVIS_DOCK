@@ -8,21 +8,26 @@
   </head>
   <body>
     <main class="shell" id="shell">
+      <span class="glow" id="glow" aria-hidden="true"></span>
+
       <header class="pill" id="pill" title="Click to pin LEON open">
         <span class="clock" id="clock">--:--</span>
-        <span class="dot" id="dot" aria-hidden="true"></span>
+        <span class="lane" id="lane" aria-hidden="true">
+          <span class="dot" id="dot"></span>
+        </span>
         <span class="mark">LEON</span>
         <span class="state" id="state">ready</span>
+        <span class="held" id="held" hidden></span>
         <span class="spacer"></span>
         <nav class="tabs" id="tabs">
           <button class="tab on" id="tabChat" type="button" data-view="chat">Chat</button>
           <button class="tab" id="tabTools" type="button" data-view="tools">Tools</button>
         </nav>
+        <span class="corner" id="corner" hidden aria-hidden="true"></span>
         <button class="ghost" id="toggle" aria-label="Open or fold LEON">⌄</button>
       </header>
 
       <section class="panel" id="panel">
-
         <div class="view" id="viewChat">
           <div class="thread" id="thread" aria-live="polite">
             <article class="intro" id="intro">
@@ -81,5 +86,7 @@
       </section>
     </main>
     <script src="app.js"></script>
+    <script src="faces.js"></script>
+    <script src="media.js"></script>
   </body>
 </html>

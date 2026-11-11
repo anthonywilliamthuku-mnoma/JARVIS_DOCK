@@ -3,6 +3,27 @@
 Single source of truth for LEON. Re-read at the start of every session.
 
 ## Done
+- **Verified on 2026-11-11 (faces, sound, media, screen) — on this PC, not in a mock:**
+  - `pytest` 142 passed, `ruff check`/`format --check` clean, `mypy --platform win32` clean on 37
+    files, and `node --check` passes on all three page scripts.
+  - `uv run leon` opened the real dock: 223 x 43 at 571,0 on the 1366 x 768 desktop. The island
+    wore the calm drop face; a click at its centre opened it to 470 x 170 (and made LEON the front
+    window, as designed), where the round face appears in the top-right corner only while open.
+  - The waveform is driven by real speakers, not a mock: a 220 Hz tone played through the default
+    output moved the loopback meter to a peak of **0.997**, and the island switched from the face to
+    five purple bars while it sounded, then back.
+  - The Media tile read the session that was actually open — *BIRDS OF A FEATHER* by Billie Eilish —
+    with its **real artwork** (a 234,846-byte PNG read from the session thumbnail), the scrub bar at
+    0:04 of 3:30 and the system volume at **64**, matching Nook's player.
+  - Screen: `BitBlt` capture works (1366 x 768 BMP in `%APPDATA%\LEON\screens`), and UI Automation
+    returns the front window's title and control labels. `Windows.Media.Ocr` answers *Class not
+    registered* on this PC (it needs MSIX package identity), which is why D-017 reads UIA first.
+  - A real bug was found and fixed by the tests: pycaw (comtypes, STA) followed by a WinRT call in
+    one thread made the media read hang rather than fail. All WinRT calls now run on one MTA thread
+    (`leond/winrt.py`, D-018).
+  - Not verified: the audible ping end to end (the sequence is unit-tested and the glow is shown in
+    `leond/ui/_show.html`), hover-to-open on the real desktop (a click was used), and the lyrics mode
+    hiding the face (it needs a `.lrc` for the playing track).
 - **Verified on 2026-11-11 (agent and dock):** 102 tests pass; `ruff check`,
   `ruff format --check` and `mypy --platform win32` are clean on 25 files; the
   page passes `node --check`. A 31-minute headless soak drove the real

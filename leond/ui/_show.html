@@ -33,15 +33,15 @@
       .row {
         display: flex;
         flex-wrap: wrap;
-        gap: 20px;
+        gap: 18px;
         align-items: flex-start;
-        margin-bottom: 14px;
+        margin-bottom: 12px;
       }
       figure {
         margin: 0;
       }
       figcaption {
-        margin-bottom: 7px;
+        margin-bottom: 6px;
         font-size: 10px;
         letter-spacing: 0.12em;
         text-transform: uppercase;
@@ -64,18 +64,33 @@
   </head>
   <body>
     <h1>LEON</h1>
-    <p class="sub">The dock at its real size, driven by a mocked bridge — the same page Python loads.</p>
+    <p class="sub">
+      The dock at its real size, driven by a mocked bridge — the same page Python loads.
+      The faces follow the pointer, blink and drift; the waveform follows the speakers.
+    </p>
 
     <div class="row">
       <figure class="capsule">
-        <figcaption>Collapsed · 223 × 43</figcaption>
+        <figcaption>Island · calm, watching the pointer</figcaption>
         <iframe data-kind="capsule" src="index.html"></iframe>
+      </figure>
+      <figure class="capsule">
+        <figcaption>Island · playing, no lyrics</figcaption>
+        <iframe data-kind="wave" src="index.html"></iframe>
+      </figure>
+      <figure class="capsule">
+        <figcaption>Island · holding files</figcaption>
+        <iframe data-kind="held" src="index.html"></iframe>
+      </figure>
+      <figure class="capsule">
+        <figcaption>Island · asking for you</figcaption>
+        <iframe data-kind="glow" src="index.html"></iframe>
       </figure>
     </div>
 
     <div class="row">
       <figure class="wide">
-        <figcaption>Open · chat</figcaption>
+        <figcaption>Open · chat, corner face</figcaption>
         <iframe data-kind="chat" src="index.html"></iframe>
       </figure>
       <figure class="wide">
@@ -100,7 +115,7 @@
         { id: "awake", name: "Keep awake", glyph: "◐", size: "small", blurb: "Hold the display on", badge: "" },
         { id: "timer", name: "Timer", glyph: "◷", size: "small", blurb: "Countdown and stopwatch", badge: "5:00" },
         { id: "calc", name: "Calculator", glyph: "=", size: "small", blurb: "Sums and conversions", badge: "" },
-        { id: "system", name: "System", glyph: "▤", size: "small", blurb: "CPU, memory, disk", badge: "" },
+        { id: "system", name: "System", glyph: "▤", size: "small", blurb: "CPU, memory, disk", badge: "18%" },
         { id: "calendar", name: "Calendar", glyph: "▦", size: "small", blurb: "Month and events", badge: "1" },
         { id: "qr", name: "QR code", glyph: "▩", size: "small", blurb: "Any text as a code", badge: "" },
         { id: "clipboard", name: "Clipboard", glyph: "▣", size: "small", blurb: "Recent clipboard text", badge: "3" },
@@ -108,7 +123,7 @@
         { id: "launch", name: "Quick launch", glyph: "▶", size: "small", blurb: "Apps, URLs, folders", badge: "" },
         { id: "colour", name: "Colour picker", glyph: "◉", size: "small", blurb: "Pixel under the cursor", badge: "" },
         { id: "voice", name: "Voice memo", glyph: "●", size: "small", blurb: "Record the microphone", badge: "" },
-        { id: "ocr", name: "Text", glyph: "⌗", size: "small", blurb: "Read text off the screen", badge: "" },
+        { id: "screen", name: "Screen", glyph: "◫", size: "small", blurb: "The words in front", badge: "" },
         { id: "media", name: "Media", glyph: "♪", size: "small", blurb: "Now playing, with lyrics", badge: "" },
       ];
 
@@ -127,14 +142,25 @@
         "Not the greatest feeling ever",
         "Said, pull yourself together",
       ];
+      const ART =
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='88'%3E" +
+        "%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E" +
+        "%3Cstop offset='0' stop-color='%235b6bff'/%3E%3Cstop offset='1' stop-color='%23b14bff'/%3E" +
+        "%3C/linearGradient%3E%3C/defs%3E%3Crect width='88' height='88' fill='url(%23g)'/%3E" +
+        "%3Ccircle cx='44' cy='44' r='14' fill='%23ffffff' fill-opacity='.22'/%3E%3C/svg%3E";
 
       function bridge(frame, kind) {
-        const sizes = [];
         const state = (index) => ({
           ok: true,
           playing: true,
           track: { ...TRACK },
-          lyrics: { key: "tame impala - the less i know the better.lrc", count: LYRICS.length, index },
+          lyrics: {
+            key: "tame impala - the less i know the better.lrc",
+            count: LYRICS.length,
+            index,
+          },
+          volume: 64,
+          volume_hint: "",
         });
         const api = {
           async hello() {
@@ -144,8 +170,7 @@
               endpoint: "http://127.0.0.1:11434",
             };
           },
-          async set_open(opened) {
-            sizes.push(opened);
+          async set_open() {
             return { ok: true };
           },
           async send() {
@@ -157,22 +182,40 @@
           async answer() {
             return { ok: true };
           },
+          async attention_ack() {
+            return { ok: true };
+          },
           async tools() {
             return TILES;
           },
           async open_tool(id) {
             if (id === "media") return state(2);
+            if (id === "screen")
+              return {
+                ok: true,
+                window: "Instagram — Chrome",
+                held: [{ name: "lecture-notes.md" }, { name: "voice-memo.wav" }],
+                held_note: "The dock is holding 2 file(s).",
+              };
             if (id === "system")
               return {
                 ok: true,
-                state: { cpu: 24, memory: 71, free_gb: 84, disk_total_gb: 465 },
+                state: { cpu: 18, memory: 71, free_gb: 84, disk_total_gb: 465 },
               };
             return { ok: true };
           },
           async act_tool(id, action) {
             if (id === "media" && action === "lines")
-              return { ok: true, key: "tame impala - the less i know the better.lrc", index: 2, lines: LYRICS };
+              return {
+                ok: true,
+                key: "tame impala - the less i know the better.lrc",
+                index: 2,
+                lines: LYRICS,
+              };
+            if (id === "media" && action === "art") return { ok: true, data_url: ART };
             if (id === "media") return state(2);
+            if (id === "screen" && action !== "shot")
+              return { ok: true, source: "uia", window: "Instagram — Chrome", text: "Reels · Following · For you", count: 3 };
             return { ok: true };
           },
         };
@@ -186,9 +229,28 @@
       async function drive(frame, kind) {
         const doc = frame.contentDocument;
         const win = frame.contentWindow;
-        await wait(90);
-        if (kind !== "capsule") doc.body.classList.add("open");
+        await wait(110);
+        if (kind !== "capsule" && kind !== "wave" && kind !== "held" && kind !== "glow") {
+          doc.body.classList.add("open");
+        }
         doc.getElementById("clock").textContent = "18:42";
+        // The pointer sits low and to the left of the island, so the eyes have
+        // somewhere to look.
+        win.leon.eyes({ x: -40, y: 120 });
+
+        const moods = {
+          capsule: { mood: "calm", mode: "face", note: "ready", held: 0 },
+          wave: { mood: "listen", mode: "wave", note: "listening to the PC", held: 0 },
+          held: { mood: "glad", mode: "files", note: "2 files held", held: 2 },
+          glow: { mood: "alert", mode: "glow", note: "asking for you", held: 0 },
+        };
+        if (moods[kind]) {
+          win.leon.mood(moods[kind]);
+          win.leon.level(kind === "wave" ? 0.72 : 0.15);
+          if (kind === "glow") win.leon.attention({ reason: "your class is starting", beats: [0, 380, 760] });
+        } else {
+          win.leon.mood({ mood: "calm", mode: "face", note: "ready", held: 0 });
+        }
 
         if (kind === "chat" || kind === "ask") {
           doc.getElementById("intro").remove();
@@ -214,24 +276,22 @@
         if (kind === "ask") {
           win.leon.ask({
             id: "7",
-            name: "run_powershell",
-            reason: "this changes the PC, so it needs your click",
-            detail: "Get-CimInstance Win32_PhysicalMemory |\n  Measure-Object -Property Capacity -Sum",
+            name: "get_attention",
+            reason: "pauses what is playing and pings you",
+            detail: "pause the music, ping, and glow until you answer",
           });
-          doc.getElementById("state").textContent = "run_powershell… 1/3";
-          const thread = doc.getElementById("thread");
-          thread.scrollTop = thread.scrollHeight;
+          doc.getElementById("state").textContent = "get_attention… 1/3";
         }
 
         if (kind === "tools" || kind === "media") {
           doc.getElementById("tabTools").click();
-          await wait(120);
+          await wait(140);
           if (kind === "media") {
             const tile = [...doc.querySelectorAll(".tile")].find((node) =>
               node.textContent.includes("Media"),
             );
             tile.click();
-            await wait(160);
+            await wait(220);
           }
         }
       }

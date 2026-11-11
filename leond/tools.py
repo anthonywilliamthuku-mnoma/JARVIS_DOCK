@@ -29,7 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from leond import facts, media, skills
+from leond import facts, inbox, media, screen, skills
 from leond.config import config_dir
 from leond.policy import Tier, check
 
@@ -61,7 +61,14 @@ TOOLS: tuple[Tool, ...] = (
     Tool("launch", "Quick launch", "▶", "wide", "Apps, folders and settings pages.", Tier.ACT),
     Tool("colour", "Colour picker", "◉", "small", "Copy the colour under the cursor.", Tier.ACT),
     Tool("voice", "Voice memo", "●", "small", "Record the microphone to WAV.", Tier.ACT),
-    Tool("ocr", "Text", "⌗", "small", "Read text off the screen.", Tier.ACT),
+    Tool(
+        "screen",
+        "Screen",
+        "◫",
+        "small",
+        "What is on screen: the words in the front window, or a picture.",
+        Tier.ACT,
+    ),
     Tool("media", "Media", "♪", "wide", "Now playing, with synced lyrics."),
 )
 
@@ -687,10 +694,6 @@ _NEEDS: dict[str, tuple[str, str]] = {
         "sounddevice",
         "Recording needs the microphone package. Run `uv add sounddevice` and reopen the dock.",
     ),
-    "ocr": (
-        "winsdk",
-        "Reading text off the screen needs Windows OCR. Run `uv add winsdk` and reopen the dock.",
-    ),
 }
 
 
@@ -799,21 +802,35 @@ def _act_voice(action: str, arg: str) -> dict[str, Any]:
 
 
 def _act_media(action: str, arg: str) -> dict[str, Any]:
-    """Now playing, its transport buttons, and the lyric line for this second."""
+    """Now playing: artwork, transport, volume, scrub and the lyric line due now."""
     if action == "lines":
         return media.lines()
     if action == "save":
         return media.save_lyrics(arg)
-    if action in ("playpause", "next", "previous"):
+    if action == "art":
+        return media.art()
+    if action == "seek":
+        try:
+            seconds = float(arg)
+        except ValueError:
+            return {"ok": False, "error": "a position in seconds is needed"}
+        return media.seek(seconds)
+    if action == "volume":
+        try:
+            percent = int(float(arg))
+        except ValueError:
+            return {"ok": False, "error": "a volume from 0 to 100 is needed"}
+        return media.set_volume(percent)
+    if action in ("playpause", "play", "pause", "next", "previous"):
         return media.control(action)
     return media.state()
 
 
-def _act_ocr(action: str, arg: str) -> dict[str, Any]:
-    missing = _missing("ocr")
-    if missing is not None:
-        return missing
-    return {"ok": False, "error": "screen reading is not wired up yet"}
+def _act_screen(action: str, arg: str) -> dict[str, Any]:
+    """The words in the front window, or a picture of the whole screen."""
+    if action == "shot":
+        return screen.capture()
+    return screen.text()
 
 
 _HANDLERS: dict[str, Any] = {
@@ -827,7 +844,7 @@ _HANDLERS: dict[str, Any] = {
     "launch": _act_launch,
     "colour": _act_colour,
     "voice": _act_voice,
-    "ocr": _act_ocr,
+    "screen": _act_screen,
     "media": _act_media,
 }
 
@@ -915,6 +932,14 @@ def state(tool_id: str) -> dict[str, Any]:
         return {"ok": True, "colour": _last_colour}
     if tool_id == "media":
         return media.state()
+    if tool_id == "screen":
+        held = inbox.listing()
+        return {
+            "ok": True,
+            "window": screen.foreground_title(),
+            "held": held,
+            "held_note": inbox.describe(held),
+        }
     if tool_id in _NEEDS:
         missing = _missing(tool_id)
         if missing is not None:

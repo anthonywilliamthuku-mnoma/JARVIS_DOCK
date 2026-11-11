@@ -80,3 +80,28 @@ Format: decision, alternatives considered, reason. Newest entries go at the bott
 - **Lyrics are never downloaded.** They are copyrighted, the dock is offline by design, and a lookup would leak what the user is listening to. The tile offers a paste box for a timestamped file instead, which is also how the user fixes a wrong offset.
 - **Cost:** the tile polls twice a second only while it is open, and stops with the page's other intervals when the tile closes. A player that publishes no timeline simply parks the lyrics on the last line instead of pretending to know.
 - **Risk accepted:** SMTC behaviour varies by player (Spotify, browsers and VLC all differ), so sync accuracy is per-player; the timestamps are the user's, so an offset error is visible and fixable rather than silent.
+
+## D-015: The island has a face, and Python decides which one
+- **Decision:** six small faces (calm, alert, glad, blank, listen, think), drawn as inline SVG in `leond/ui/faces.js`. They blink, drift a few pixels and turn their eyes toward the pointer. `leond/mood.py` decides the face and the island mode from what the PC is doing, and `dock.py` pushes that over the bridge about once a second. Expanded, the same face appears again as a round face in the top-right corner, and only while expanded.
+- **Reason:** a status dot says "on" and nothing else. A face can say calm, working, listening, or please-look-at-me without another line of text in a 223 px capsule, and it gives the dock a mood the way Nook's island does.
+- **The rules, in priority order:** an attention ping (alert, glowing); a turn in flight (think); playing with a lyric line to highlight (the face hides — the song is the thing to look at); playing anything else (the waveform); files held on the dock (glad, with a count); sound without a media session (the waveform, so a class in a browser still shows); otherwise calm and watching.
+- **Cost:** one `requestAnimationFrame` loop per visible lane, throttled to 30 fps, plus a pointer event ten times a second. The pointer has to come from `GetCursorPos` in Python because the page cannot see a pointer outside its own window.
+- **Risk accepted:** the eyes are an approximation — the dock's screen origin is known, so the direction is right, but a face two pixels wide cannot be said to "see" anything.
+
+## D-016: A ping pauses what is playing, glows, and puts it back
+- **Decision:** `leond/attention.py` pauses playback if anything is playing, tells the page to glow on a list of beats, plays two tones on those same beats, waits for the user to touch the dock, then resumes playback. Any click or key counts as an answer.
+- **Reason:** a sound alone is missed with headphones off or music on; a glow alone is missed when the user is looking elsewhere. Pausing is the part that cannot be ignored, and it is also the part that must be undone, which is why the resume is unconditional (answered or not).
+- **Cost:** twenty seconds of waiting at most, on a daemon thread, and two `winsound.Beep` calls. Nothing is recorded and nothing is sent anywhere.
+- **Risk accepted:** a player that refuses the pause still gets the ping and the glow; the sentence LEON gets back says which of the three happened rather than claiming success.
+
+## D-017: Screen reading is UI Automation first, OCR second, a picture last
+- **Decision:** `leond/screen.py` reads the front window through UI Automation (the .NET assemblies that ship with Windows, driven by a fixed PowerShell script), falls back to `Windows.Media.Ocr` on a BitBlt screenshot, and at worst saves the screenshot and says so. Typing and clicking exist but only behind a policy check and an Allow card; the Screen tile itself can only read and capture.
+- **Reason:** measured on this PC, `Windows.Media.Ocr` answers "Class not registered" — it needs MSIX package identity, which a plain `uv run` app does not have. UI Automation needs no package identity, returns the window title and the actual control labels, and is far more useful to a text-only model than OCR noise. The screenshot stays because a person (or a future image model) can look at it.
+- **Cost:** one PowerShell process per look, about a second, on demand only. Screenshots are BMP (no image library needed) in `%APPDATA%\LEON\screens`.
+- **Risk accepted:** browsers expose little through UI Automation until their accessibility tree is built, so a web page can come back as just its title; that is reported honestly instead of being filled in with guesses.
+
+## D-018: Every WinRT call runs on one thread that owns its apartment
+- **Decision:** `leond/winrt.py` keeps a single daemon thread with a free-threaded (MTA) COM apartment, and every WinRT call is queued to it and answered back. `pycaw` (comtypes, STA) stays on whichever thread asks for the volume.
+- **Reason:** found by the test suite, not by reading docs: calling pycaw first and WinRT second in one thread made the media read **hang** rather than fail, because the two libraries disagree about the apartment and WinRT's async completions never arrived. An STA worker with no message pump hung the artwork read the same way. One MTA thread that owns every WinRT call removes both.
+- **Cost:** one thread and one queue, serialised media calls (a read takes about 0.2 s), and a 6-second ceiling on any single call.
+- **Risk accepted:** a hung WinRT call now costs one timed-out request instead of the whole dock, and the queue stays clear because the caller gives up rather than the worker.

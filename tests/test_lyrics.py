@@ -71,15 +71,15 @@ def test_media_control_explains_a_missing_package(monkeypatch: Any) -> None:
     monkeypatch.setattr(media, "available", lambda: False)
     result = tools.act("media", "state")
     assert result["ok"] is False
-    assert "winsdk" in result["error"]
+    assert "winrt-windows-media-control" in result["error"]
 
 
 def test_saving_lyrics_without_timestamps_is_refused(monkeypatch: Any, tmp_path: Path) -> None:
     monkeypatch.setenv("APPDATA", str(tmp_path))
     monkeypatch.setattr(media, "available", lambda: True)
+    monkeypatch.setattr(media, "volume", lambda: -1)
 
-    def fake_run(coro: Any, timeout: float) -> dict[str, Any]:
-        coro.close()  # never awaited: keep the test free of warnings
+    def fake_run(make: Any, timeout: float) -> dict[str, Any]:
         return {
             "title": "Let It Happen",
             "artist": "Tame Impala",
@@ -104,8 +104,7 @@ def test_the_current_line_follows_the_playhead(monkeypatch: Any, tmp_path: Path)
     monkeypatch.setenv("APPDATA", str(tmp_path))
     lyrics.save("A", "B", "[00:01.00]one\n[00:05.00]two\n")
 
-    def fake_run(coro: Any, timeout: float) -> dict[str, Any]:
-        coro.close()
+    def fake_run(make: Any, timeout: float) -> dict[str, Any]:
         return {
             "title": "B",
             "artist": "A",
@@ -116,6 +115,7 @@ def test_the_current_line_follows_the_playhead(monkeypatch: Any, tmp_path: Path)
         }
 
     monkeypatch.setattr(media, "available", lambda: True)
+    monkeypatch.setattr(media, "volume", lambda: -1)
     monkeypatch.setattr(media, "_run", fake_run)
     state = media.state()
     assert state["lyrics"]["index"] == 1

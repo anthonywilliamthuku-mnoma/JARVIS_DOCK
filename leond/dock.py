@@ -17,7 +17,7 @@ from typing import Any
 
 import webview
 
-from leond import __version__, tools
+from leond import __version__, attention, audio, cursor, inbox, media, mood, tools
 from leond.agent import Agent, Hooks
 from leond.audit import AuditLog
 from leond.brain import Brain, BrainError, Message
@@ -71,9 +71,99 @@ class DockApi:
         self._tickets = itertools.count(1)
         self._waiting: dict[str, threading.Event] = {}
         self._answers: dict[str, bool] = {}
+        self._rect: tuple[int, int, int, int] = (0, 0, WIDTH, COLLAPSED_H)
+        self._beat_stop = threading.Event()
+        self._beat_thread: threading.Thread | None = None
+        self._attention_event = threading.Event()
+        self._playing = False
+        self._lyric_index = -1
+        self._last_mood: mood.Mood | None = None
+        self._mood_age = 0
+        self._agent_busy = False
 
     def attach(self, window: webview.Window) -> None:
         self._window = window
+
+    # -- the faces, the pointer and the ping ---------------------------------
+
+    def wake(self, window: webview.Window | None = None) -> None:
+        """Start following the pointer, the speakers and the media session.
+
+        Called by ``webview.start`` once the window exists, so nothing here runs
+        during the launch tests or before the page can receive an event.
+        """
+        if window is not None:
+            self._window = window
+        attention.set_hooks(self._emit, self._wait_for_answer)
+        if audio.start():
+            self._audit.write("dock", "audio meter", "started")
+        self._beat_thread = threading.Thread(target=self._beat, name="leon-beat", daemon=True)
+        self._beat_thread.start()
+
+    def shutdown(self) -> None:
+        """Stop the background loops when the window closes."""
+        self._beat_stop.set()
+        thread = self._beat_thread
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=2.0)
+        self._beat_thread = None
+        audio.stop()
+
+    def attention_ack(self) -> dict[str, Any]:
+        """The user touched the dock while it was glowing."""
+        self._attention_event.set()
+        self._audit.write("attention", "answered", "ok")
+        return {"ok": True}
+
+    def _wait_for_answer(self, timeout: float) -> bool:
+        self._attention_event.clear()
+        answered = self._attention_event.wait(timeout)
+        self._attention_event.clear()
+        return bool(answered)
+
+    def _beat(self) -> None:
+        """Ten times a second: the pointer, then the level of what is playing."""
+        ticks = 0
+        while not self._beat_stop.wait(0.1):
+            if self._window is None:
+                continue
+            point = cursor.relative((self._rect[0], self._rect[1]))
+            if point is not None:
+                self._emit("eyes", point)
+            if audio.available():
+                self._emit("level", audio.level())
+            ticks += 1
+            if ticks % 10 == 0:
+                self._paint_mood()
+
+    def _paint_mood(self) -> None:
+        """Work out the face, and tell the page only when it changes."""
+        if self._window is None:
+            return
+        if media.available():
+            try:
+                current = media.now()
+            except Exception:  # noqa: BLE001 - the media session is not guaranteed
+                current = {"ok": False}
+            self._playing = bool(current.get("playing"))
+            part = current.get("lyrics")
+            self._lyric_index = int(part.get("index", -1)) if isinstance(part, dict) else -1
+        else:
+            self._playing, self._lyric_index = False, -1
+
+        face = mood.decide(
+            busy=self._agent_busy,
+            playing=self._playing,
+            lyrics=self._lyric_index,
+            level=audio.level(),
+            held=inbox.count(),
+        )
+        self._mood_age += 1
+        if face == self._last_mood and self._mood_age < 100:
+            return
+        self._last_mood = face
+        self._mood_age = 0
+        self._emit("mood", mood.payload(face))
 
     # -- called from the page -------------------------------------------------
 
@@ -154,8 +244,9 @@ class DockApi:
             return
         self._open = opened
         with contextlib.suppress(Exception):
-            screen = webview.screens[0] if webview.screens else None
-            x, y, width, height = geometry(getattr(screen, "width", 1920), opened)
+            display = webview.screens[0] if webview.screens else None
+            x, y, width, height = geometry(getattr(display, "width", 1920), opened)
+            self._rect = (x, y, width, height)
             self._window.resize(width, height)
             self._window.move(x, y)
 
@@ -207,6 +298,7 @@ class DockApi:
         )
 
         try:
+            self._agent_busy = True
             self._emit("busy", True)
             reply = self._agent.answer(self._history, message, hooks, self._cancel)
             if pending:
@@ -236,6 +328,7 @@ class DockApi:
             self._audit.write("chat", type(exc).__name__, "error")
             self._emit("error", f"unexpected problem: {type(exc).__name__}")
         finally:
+            self._agent_busy = False
             self._emit("busy", False)
 
 
@@ -267,5 +360,6 @@ def run(cfg: Config) -> int:
         f"on a {getattr(screen, 'width', 0)}x{getattr(screen, 'height', 0)} screen",
         flush=True,
     )
-    webview.start(debug=False)
+    webview.start(func=api.wake, args=(window,), debug=False)
+    api.shutdown()
     return 0

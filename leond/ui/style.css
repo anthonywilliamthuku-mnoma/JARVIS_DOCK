@@ -902,3 +902,286 @@ body.open .tabs {
 .stop {
   background: rgba(255, 92, 92, 0.85);
 }
+
+/* faces, waveform and the attention glow -------------------------------- */
+
+/* The island's lane: the face (or the waveform, or the lyric note) sits where
+   the status pip used to, and the pip stays as the busy light. */
+.lane {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.lane .face {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  will-change: transform;
+}
+
+.eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 80ms ease-out;
+}
+
+.face.blink .eye {
+  transform: scaleY(0.12);
+}
+
+body[data-mode="wave"] .lane .face,
+body[data-mode="lyrics"] .lane .face {
+  display: none;
+}
+
+.lane i {
+  display: none;
+  width: 2px;
+  height: 15px;
+  border-radius: 1px;
+  background: var(--accent);
+  transform-origin: center center;
+  will-change: transform;
+}
+
+body[data-mode="wave"] .lane i {
+  display: block;
+}
+
+.lane .note {
+  display: none;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+body[data-mode="lyrics"] .lane .note {
+  display: block;
+}
+
+/* The pip is a light inside the lane now, not a column of its own. */
+.lane .dot {
+  position: absolute;
+  right: -1px;
+  bottom: 2px;
+}
+
+/* Expanded only: a round face in the top-right corner of the dock. */
+.corner {
+  position: relative;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: none;
+}
+
+body.open .corner {
+  display: inline-flex;
+}
+
+body.open .corner .face {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.held {
+  flex: none;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--dim);
+}
+
+.held[hidden] {
+  display: none;
+}
+
+.shell {
+  position: relative;
+}
+
+.glow {
+  position: absolute;
+  inset: -1px;
+  z-index: 5;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms ease-out;
+}
+
+body[data-attention="on"] .glow {
+  opacity: 1;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 65%, transparent),
+    0 0 20px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.glow.beat {
+  animation: ping 560ms ease-out;
+}
+
+@keyframes ping {
+  0% {
+    box-shadow:
+      inset 0 0 0 1px var(--accent),
+      0 0 30px var(--accent);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent),
+      0 0 10px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+}
+
+/* the media player, laid out like Nook's --------------------------------- */
+
+.nowbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.art {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 9px;
+  border: 1px solid var(--rim);
+  background: rgba(255, 255, 255, 0.05) center / cover no-repeat;
+  display: grid;
+  place-items: center;
+}
+
+.art.has .artglyph {
+  display: none;
+}
+
+.artglyph {
+  font-size: 15px;
+  color: var(--dim);
+}
+
+.nowmeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.volrow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+}
+
+.volglyph {
+  font-size: 9px;
+  color: var(--dim);
+}
+
+.vol {
+  width: 58px;
+  height: 10px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.at {
+  font-size: 9px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.transport button {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bubble);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.transport button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.transport button.primary {
+  width: 30px;
+  height: 30px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+}
+
+.scrubrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  margin-top: 5px;
+}
+
+.scrub {
+  position: relative;
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+}
+
+.scrub i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  display: block;
+  width: 0;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.lyrrow {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  margin-top: 4px;
+  align-items: flex-start;
+}
+
+.lyrrow .lyrics {
+  flex: 1;
+  min-height: 0;
+}
+
+.lyrrow > button {
+  flex: none;
+  border: 1px solid var(--rim);
+  border-radius: 8px;
+  padding: 2px 7px;
+  background: var(--bubble);
+  color: var(--dim);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}

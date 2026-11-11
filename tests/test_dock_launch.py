@@ -13,7 +13,7 @@ from typing import Any
 
 import webview
 
-from leond import dock
+from leond import audio, dock, inbox, media
 from leond.config import Config
 
 
@@ -86,7 +86,11 @@ def test_launch_opens_the_capsule_at_the_top_of_the_screen(monkeypatch: Any) -> 
     assert created["on_top"] is True
     assert created["transparent"] is True
     assert created["resizable"] is False
-    assert created["start"] == {"debug": False}
+    started = created["start"]
+    assert started["debug"] is False
+    # The face loop starts with the window, never before it exists.
+    assert callable(started["func"])
+    assert started["args"] == (window,)
 
 
 def test_clicking_the_dock_resizes_the_window_to_the_open_panel(monkeypatch: Any) -> None:
@@ -101,10 +105,40 @@ def test_clicking_the_dock_resizes_the_window_to_the_open_panel(monkeypatch: Any
 
 def test_the_bridge_the_page_calls_is_the_one_python_exposes(monkeypatch: Any) -> None:
     _, _, api = _launch(monkeypatch)
-    for name in ("hello", "send", "stop", "answer", "set_open", "tools", "open_tool", "act_tool"):
+    for name in (
+        "hello",
+        "send",
+        "stop",
+        "answer",
+        "set_open",
+        "tools",
+        "open_tool",
+        "act_tool",
+        "attention_ack",
+        "wake",
+        "shutdown",
+    ):
         assert callable(getattr(api, name)), name
     assert api.hello()["model"] == Config().model
     assert [item["id"] for item in api.tools()]
+
+
+def test_the_island_is_told_which_face_to_wear(monkeypatch: Any) -> None:
+    window, _, api = _launch(monkeypatch)
+    monkeypatch.setattr(media, "available", lambda: False)
+    monkeypatch.setattr(audio, "level", lambda: 0.0)
+    monkeypatch.setattr(inbox, "count", lambda: 0)
+
+    api._paint_mood()  # noqa: SLF001 - one tick of the face loop
+    assert any("window.leon.mood" in script and '"calm"' in script for script in window.scripts)
+
+    window.scripts.clear()
+    api._paint_mood()  # noqa: SLF001 - the same face is not re-sent every second
+    assert window.scripts == []
+
+    monkeypatch.setattr(inbox, "count", lambda: 3)
+    api._paint_mood()  # noqa: SLF001
+    assert any('"files"' in script for script in window.scripts)
 
 
 def test_the_window_is_told_about_a_pending_approval(monkeypatch: Any) -> None:
