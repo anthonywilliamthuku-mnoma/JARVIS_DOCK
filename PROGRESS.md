@@ -3,6 +3,13 @@
 Single source of truth for LEON. Re-read at the start of every session.
 
 ## Done
+- **Verified on 2026-11-11 (agent and dock):** 102 tests pass; `ruff check`,
+  `ruff format --check` and `mypy --platform win32` are clean on 25 files; the
+  page passes `node --check`. A 31-minute headless soak drove the real
+  `DockApi` through 1,085 open/act cycles over all thirteen tiles and 19 chat
+  turns with no leak, no stuck thread and an intact audit chain; the native
+  window itself still needs Windows. `leond/ui/_show.html` renders the dock in
+  five states at real size against a mocked bridge.
 - **Phase 0 (foundations):** project skeleton, `pyproject.toml` (uv, ruff, mypy strict, pytest), CI workflow, `ARCHITECTURE.md`, `DECISIONS.md`, `SKILLS.md`, this file. Tagged `phase-0-done`.
 - **Dock shell (D-008, D-012):** recreated from Nook 0.4.2 as a transparent **223 x 43** glass capsule at the top centre, flush with the screen edge. Hover opens it (120 ms), leaving folds it (250 ms), a click pins it, and it grows into a **470 x 170** panel. Frameless, always on top, draggable, WebView2 through `pywebview`; no Node, no Rust, no open ports.
 - **Brain (D-009):** `leond/brain.py` streams from any local OpenAI-compatible server and understands tool calls. Default model is the small local one.
@@ -51,6 +58,13 @@ Single source of truth for LEON. Re-read at the start of every session.
   second is highlighted. Lyrics are the user's own `.lrc` files in
   `%APPDATA%\LEON\lyrics` (`Artist - Title.lrc`), pasted once from the tile's
   **Lyrics** box. Nothing is downloaded.
+- **The turn's history is no longer duplicated:** each tool checkpoint used
+  to re-send every earlier step's sentence, so a two-step answer handed the
+  model its own preamble twice and the model echoed it. A checkpoint now holds
+  only what that step said, the closing entry holds only the last step, and the
+  context window never begins with a tool result whose question was trimmed
+  away (servers reject that pairing). The dock also drops the empty bubble a
+  tool-only turn used to leave.
 - **The open panel is 470 x 170, and the tiles were shrunk to fit it:** the
   Chat/Tools switch moved into the header row, the grid is six across and two
   rows (all twelve tiles, no scrolling, 9 px labels that do not clip), and the

@@ -182,7 +182,10 @@ window.leon = {
   done(payload) {
     if (current) {
       current.classList.remove("caret");
-      if (!current.textContent && payload.text) current.textContent = payload.text;
+      if (!current.textContent && payload && payload.text) current.textContent = payload.text;
+      // A turn that only ran a tool leaves an empty bubble behind: drop it
+      // rather than showing a blank balloon over the composer.
+      if (!current.textContent.trim()) current.remove();
     }
     current = null;
     setBusy(false);

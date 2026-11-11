@@ -132,6 +132,32 @@ def test_the_loop_is_bounded(tmp_path: Path) -> None:
     assert brain.calls == 3  # MAX_STEPS
 
 
+def test_a_second_step_does_not_repeat_the_first_step_text(tmp_path: Path) -> None:
+    first = ToolCall("call_1", "local_time", "{}")
+    second = ToolCall("call_2", "system_report", "{}")
+    agent, _, _ = make_agent(
+        [
+            [Delta("Let me check."), Calls((first,))],
+            [Calls((second,))],
+            [Delta("It is late.")],
+        ],
+        tmp_path,
+    )
+    history: list[Message] = []
+    reply = agent.answer(history, "what time is it", make_hooks()[0], threading.Event())
+
+    # The reply is everything the turn said, preamble included: the user has
+    # already watched those words stream past.
+    assert reply == "Let me check.It is late."
+    # Each step's entry holds only what that step said, so the model is never
+    # handed its own earlier sentence twice.
+    assert [m.content for m in history if m.role == "assistant"] == [
+        "Let me check.",
+        "",
+        "It is late.",
+    ]
+
+
 def test_history_records_both_sides(tmp_path: Path) -> None:
     agent, _, _ = make_agent([[Delta("hi back")]], tmp_path)
     history: list[Message] = []

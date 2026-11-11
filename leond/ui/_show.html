@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>LEON dock — the whole thing</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 14px 30px 16px;
+        background:
+          radial-gradient(70% 50% at 50% 0%, #223 0%, transparent 70%),
+          linear-gradient(180deg, #171a21, #0e1015);
+        color: #cbd0dd;
+        font: 12px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      }
+      h1 {
+        margin: 0 0 2px;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      .sub {
+        margin: 0 0 12px;
+        color: #7d8496;
+        font-size: 11px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: flex-start;
+        margin-bottom: 14px;
+      }
+      figure {
+        margin: 0;
+      }
+      figcaption {
+        margin-bottom: 7px;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #7d8496;
+      }
+      iframe {
+        border: 0;
+        display: block;
+        background: transparent;
+      }
+      .wide iframe {
+        width: 470px;
+        height: 170px;
+      }
+      .capsule iframe {
+        width: 223px;
+        height: 43px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>LEON</h1>
+    <p class="sub">The dock at its real size, driven by a mocked bridge — the same page Python loads.</p>
+
+    <div class="row">
+      <figure class="capsule">
+        <figcaption>Collapsed · 223 × 43</figcaption>
+        <iframe data-kind="capsule" src="index.html"></iframe>
+      </figure>
+    </div>
+
+    <div class="row">
+      <figure class="wide">
+        <figcaption>Open · chat</figcaption>
+        <iframe data-kind="chat" src="index.html"></iframe>
+      </figure>
+      <figure class="wide">
+        <figcaption>Open · approval</figcaption>
+        <iframe data-kind="ask" src="index.html"></iframe>
+      </figure>
+    </div>
+
+    <div class="row">
+      <figure class="wide">
+        <figcaption>Open · tools</figcaption>
+        <iframe data-kind="tools" src="index.html"></iframe>
+      </figure>
+      <figure class="wide">
+        <figcaption>Open · media, with lyrics</figcaption>
+        <iframe data-kind="media" src="index.html"></iframe>
+      </figure>
+    </div>
+
+    <script>
+      const TILES = [
+        { id: "awake", name: "Keep awake", glyph: "◐", size: "small", blurb: "Hold the display on", badge: "" },
+        { id: "timer", name: "Timer", glyph: "◷", size: "small", blurb: "Countdown and stopwatch", badge: "5:00" },
+        { id: "calc", name: "Calculator", glyph: "=", size: "small", blurb: "Sums and conversions", badge: "" },
+        { id: "system", name: "System", glyph: "▤", size: "small", blurb: "CPU, memory, disk", badge: "" },
+        { id: "calendar", name: "Calendar", glyph: "▦", size: "small", blurb: "Month and events", badge: "1" },
+        { id: "qr", name: "QR code", glyph: "▩", size: "small", blurb: "Any text as a code", badge: "" },
+        { id: "clipboard", name: "Clipboard", glyph: "▣", size: "small", blurb: "Recent clipboard text", badge: "3" },
+        { id: "notes", name: "Notes", glyph: "✎", size: "small", blurb: "Everything LEON saved", badge: "2" },
+        { id: "launch", name: "Quick launch", glyph: "▶", size: "small", blurb: "Apps, URLs, folders", badge: "" },
+        { id: "colour", name: "Colour picker", glyph: "◉", size: "small", blurb: "Pixel under the cursor", badge: "" },
+        { id: "voice", name: "Voice memo", glyph: "●", size: "small", blurb: "Record the microphone", badge: "" },
+        { id: "ocr", name: "Text", glyph: "⌗", size: "small", blurb: "Read text off the screen", badge: "" },
+        { id: "media", name: "Media", glyph: "♪", size: "small", blurb: "Now playing, with lyrics", badge: "" },
+      ];
+
+      const TRACK = {
+        title: "The Less I Know the Better",
+        artist: "Tame Impala",
+        album: "Currents",
+        playing: true,
+        position: 64.4,
+        duration: 216,
+      };
+      const LYRICS = [
+        "Someone said they left together",
+        "I ran out the door to get her",
+        "She was holding hands with Trevor",
+        "Not the greatest feeling ever",
+        "Said, pull yourself together",
+      ];
+
+      function bridge(frame, kind) {
+        const sizes = [];
+        const state = (index) => ({
+          ok: true,
+          playing: true,
+          track: { ...TRACK },
+          lyrics: { key: "tame impala - the less i know the better.lrc", count: LYRICS.length, index },
+        });
+        const api = {
+          async hello() {
+            return {
+              version: "0.1.0",
+              model: "qwen2.5-0.5b-heretic",
+              endpoint: "http://127.0.0.1:11434",
+            };
+          },
+          async set_open(opened) {
+            sizes.push(opened);
+            return { ok: true };
+          },
+          async send() {
+            return { ok: true };
+          },
+          async stop() {
+            return { ok: true };
+          },
+          async answer() {
+            return { ok: true };
+          },
+          async tools() {
+            return TILES;
+          },
+          async open_tool(id) {
+            if (id === "media") return state(2);
+            if (id === "system")
+              return {
+                ok: true,
+                state: { cpu: 24, memory: 71, free_gb: 84, disk_total_gb: 465 },
+              };
+            return { ok: true };
+          },
+          async act_tool(id, action) {
+            if (id === "media" && action === "lines")
+              return { ok: true, key: "tame impala - the less i know the better.lrc", index: 2, lines: LYRICS };
+            if (id === "media") return state(2);
+            return { ok: true };
+          },
+        };
+        const win = frame.contentWindow;
+        win.pywebview = { api };
+        win.dispatchEvent(new win.Event("pywebviewready"));
+      }
+
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      async function drive(frame, kind) {
+        const doc = frame.contentDocument;
+        const win = frame.contentWindow;
+        await wait(90);
+        if (kind !== "capsule") doc.body.classList.add("open");
+        doc.getElementById("clock").textContent = "18:42";
+
+        if (kind === "chat" || kind === "ask") {
+          doc.getElementById("intro").remove();
+          const say = (who, text) => {
+            const node = doc.createElement("div");
+            node.className = "turn " + who;
+            node.textContent = text;
+            doc.getElementById("thread").append(node);
+          };
+          say("me", "what time is it?");
+          win.leon.busy(true);
+          win.leon.delta("It's 18:42 on Wednesday, 11 November 2026 —");
+          win.leon.delta(" your PC is set to UTC+00:00.");
+          win.leon.done({
+            text: "",
+            stats: { seconds: 1.8, first_ms: 182, tokens: 24, per_second: 14.2 },
+          });
+          doc.getElementById("state").textContent = "ready";
+          const thread = doc.getElementById("thread");
+          thread.scrollTop = thread.scrollHeight;
+        }
+
+        if (kind === "ask") {
+          win.leon.ask({
+            id: "7",
+            name: "run_powershell",
+            reason: "this changes the PC, so it needs your click",
+            detail: "Get-CimInstance Win32_PhysicalMemory |\n  Measure-Object -Property Capacity -Sum",
+          });
+          doc.getElementById("state").textContent = "run_powershell… 1/3";
+          const thread = doc.getElementById("thread");
+          thread.scrollTop = thread.scrollHeight;
+        }
+
+        if (kind === "tools" || kind === "media") {
+          doc.getElementById("tabTools").click();
+          await wait(120);
+          if (kind === "media") {
+            const tile = [...doc.querySelectorAll(".tile")].find((node) =>
+              node.textContent.includes("Media"),
+            );
+            tile.click();
+            await wait(160);
+          }
+        }
+      }
+
+      for (const frame of document.querySelectorAll("iframe")) {
+        const kind = frame.dataset.kind;
+        frame.addEventListener("load", async () => {
+          bridge(frame, kind);
+          await drive(frame, kind);
+        });
+      }
+    </script>
+  </body>
+</html>

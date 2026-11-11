@@ -297,4 +297,8 @@ def trim(messages: list[Message], context: int, reserve: int = 512) -> list[Mess
         kept.append(message)
         used += cost
     kept.reverse()
+    # A tool result whose assistant turn was cut is rejected by every
+    # OpenAI-compatible server, so the window never starts on one.
+    while kept and kept[0].role == "tool":
+        kept.pop(0)
     return kept

@@ -50,22 +50,29 @@ class Agent:
         history.append(Message("user", text))
         schema = skills.schema_list()
         spoken: list[str] = []
+        said = 0
 
         for step in range(MAX_STEPS):
             if cancel.is_set():
                 break
             if step > 0:
                 hooks.on_state("thinking…")
+            # Only what this step said belongs in this step's history entry:
+            # re-sending earlier sentences makes a small model repeat itself.
+            said = len(spoken)
             calls = self._step(history, schema, hooks, cancel, spoken)
             if not calls:
                 break
-            self._act(history, calls, hooks, spoken)
+            self._act(history, calls, hooks, spoken[said:], step)
         else:
             hooks.on_state("that needed more steps than I take")
 
         reply = "".join(spoken).strip()
-        if reply:
-            history.append(Message("assistant", reply))
+        # The tool checkpoints already hold the earlier steps, so the closing
+        # entry carries only the words the last step added.
+        closing = "".join(spoken[said:]).strip()
+        if closing:
+            history.append(Message("assistant", closing))
         return reply
 
     def _step(
@@ -101,16 +108,17 @@ class Agent:
         calls: tuple[ToolCall, ...],
         hooks: Hooks,
         spoken: list[str],
+        step: int,
     ) -> None:
         parsed: list[Message] = []
         request: list[dict[str, object]] = []
         for call in calls:
             request.append(call.as_payload())
-            parsed.append(self._run_one(call.name, call.arguments, call.id, hooks))
+            parsed.append(self._run_one(call.name, call.arguments, call.id, hooks, step))
         history.append(Message("assistant", "".join(spoken), tool_calls=tuple(request)))
         history.extend(parsed)
 
-    def _run_one(self, name: str, raw: str, call_id: str, hooks: Hooks) -> Message:
+    def _run_one(self, name: str, raw: str, call_id: str, hooks: Hooks, step: int = 0) -> Message:
         """Check, maybe ask, then run one skill."""
         try:
             args = skills.parse_args(raw)
@@ -141,7 +149,7 @@ class Agent:
                     tool_call_id=call_id,
                 )
 
-        hooks.on_state(f"{name}…")
+        hooks.on_state(f"{name}… {step + 1}/{MAX_STEPS}")
         result = skills.execute(name, args)
         self._audit.write(
             "skill", name, "ok" if not result.startswith(f"{name} failed") else "error"
