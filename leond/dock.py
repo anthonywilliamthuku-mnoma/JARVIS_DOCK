@@ -17,7 +17,7 @@ from typing import Any
 
 import webview
 
-from leond import __version__, attention, audio, cursor, inbox, media, mood, tools
+from leond import __version__, attention, audio, cursor, inbox, media, mood, tools, voice
 from leond.agent import Agent, Hooks
 from leond.audit import AuditLog
 from leond.brain import Brain, BrainError, Message
@@ -206,6 +206,13 @@ class DockApi:
             event.set()
         self._audit.write("approval", str(ticket), "allowed" if allowed else "denied")
         return {"ok": True}
+
+    def listen(self) -> dict[str, Any]:
+        """Push-to-talk: one spoken turn, transcribed offline. Returns the text."""
+        result = voice.listen()
+        outcome = "heard" if result.get("ok") else "failed"
+        self._audit.write("voice", "one utterance", outcome)
+        return result
 
     def set_open(self, opened: bool) -> dict[str, Any]:
         self._resize(bool(opened))

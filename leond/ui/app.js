@@ -14,6 +14,7 @@ const el = {
   input: document.getElementById("input"),
   form: document.getElementById("composer"),
   send: document.getElementById("send"),
+  mic: document.getElementById("mic"),
   stop: document.getElementById("stop"),
   stats: document.getElementById("stats"),
   state: document.getElementById("state"),
@@ -270,6 +271,32 @@ function resize() {
 el.form.addEventListener("submit", (event) => {
   event.preventDefault();
   send();
+});
+
+// Push to talk: one utterance is transcribed into the box for review, then the
+// user presses Send like any typed message.
+el.mic.addEventListener("click", async () => {
+  const call = api();
+  if (!call || busy || el.mic.disabled) return;
+  el.mic.disabled = true;
+  el.mic.classList.add("listening");
+  el.stats.textContent = "listening…";
+  try {
+    const result = await call.listen();
+    if (result && result.ok) {
+      el.input.value = result.text;
+      resize();
+      el.input.focus();
+      el.stats.textContent = "heard you";
+    } else {
+      el.stats.textContent = (result && result.error) || "no speech";
+    }
+  } catch (err) {
+    el.stats.textContent = "voice is not available";
+  } finally {
+    el.mic.disabled = false;
+    el.mic.classList.remove("listening");
+  }
 });
 
 el.chips?.addEventListener("click", (event) => {

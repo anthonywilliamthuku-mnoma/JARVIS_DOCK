@@ -172,3 +172,15 @@ uv run pytest
 - Lyrics: browser playback reports a session, but the "(1) Instagram" tab has no artist, so no lyric lookup. TODO(leon): retest with a song playing and its .lrc saved.
 - Voice commands: TODO(leon). Research: Vosk (Apache-2.0, offline, Windows wheel) is the candidate. Not integrated.
 - Phone Link: TODO(leon). No public API. Notification integration is a Limited Access Feature, approval by email to Microsoft. SMS requires Windows.Devices.Sms or a Phone Link UI path. Not integrated.
+
+## Voice commands (Vosk)
+
+- `leond/voice.py`: push-to-talk. Records the default microphone until a pause, transcribes offline with Vosk, returns text. No audio is written to disk.
+- Model: `vosk-model-small-en-us-0.15` (41 MB) in `%APPDATA%\LEON\voice\model`. Not in the repo.
+- Dock: a mic button next to Send (`index.html`, `app.js`, `style.css`) calls `DockApi.listen()`. The transcript goes into the text box for review; Send is still required.
+- Dependency: `vosk>=0.3.45` (Apache-2.0), added to `pyproject.toml`/`uv.lock`; mypy override added.
+- Tests: `tests/test_voice.py` (threshold and missing-model paths). Spoken-phrase accuracy is NOT tested: TODO(leon) speak a command and check the transcript.
+
+## Agent acts (live check)
+
+- Live: the dock's chat path ran `open_app` (audit `ok`) for "Open Notepad", and Notepad started. The prompt was not changed.
