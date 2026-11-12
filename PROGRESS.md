@@ -184,3 +184,10 @@ uv run pytest
 ## Agent acts (live check)
 
 - Live: the dock's chat path ran `open_app` (audit `ok`) for "Open Notepad", and Notepad started. The prompt was not changed.
+
+## Dock size and spoken replies
+
+- Collapsed island set to 225 x 56 (was 217 x 50); pill CSS and tests follow.
+- Replies are now spoken aloud through Windows' built-in speech (`voice.speak`, System.Speech via PowerShell, no new dependency, runs in the background).
+- TODO(leon): the live window still did not measure at 225 x 56 after restart (it measured 209 x 100 before the re-assert in `wake`; 470 x 170 when expanded). Re-check the collapsed size on screen.
+- TODO(leon): spoken output is untested by ear; the reply path calls `voice.speak` after `done`.

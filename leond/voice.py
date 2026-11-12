@@ -16,6 +16,7 @@ import json
 import math
 import os
 import struct
+import subprocess
 import time
 from pathlib import Path
 
@@ -102,6 +103,32 @@ def transcribe(pcm: bytes) -> str:
     return str(result.get("text", "")).strip()
 
 
+def speak(text: str) -> None:
+    """Say a reply aloud with the Windows speech voice, without blocking.
+
+    Uses the built-in System.Speech synthesiser, so nothing is installed and
+    nothing leaves the PC. The text is passed through an environment variable,
+    never spliced into the command, so reply text cannot inject PowerShell.
+    """
+    spoken = " ".join(text.split())[:1000]
+    if not spoken:
+        return
+    env = {**os.environ, "LEON_SPEAK": spoken}
+    script = (
+        "Add-Type -AssemblyName System.Speech; "
+        "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+        "$s.Rate = 1; $s.Speak($env:LEON_SPEAK); $s.Dispose()"
+    )
+    try:
+        subprocess.Popen(  # noqa: S603 - fixed program and arguments
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+            env=env,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+    except OSError:
+        return
+
+
 def listen() -> dict[str, object]:
     """One push-to-talk turn: record, transcribe, and report what was heard."""
     if not available():
@@ -118,4 +145,12 @@ def listen() -> dict[str, object]:
     return {"ok": True, "text": text}
 
 
-__all__ = ["MODEL_HINT", "available", "listen", "model_dir", "record_utterance", "transcribe"]
+__all__ = [
+    "MODEL_HINT",
+    "available",
+    "listen",
+    "model_dir",
+    "record_utterance",
+    "speak",
+    "transcribe",
+]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import struct
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -28,3 +29,25 @@ def test_listen_reports_a_missing_model(monkeypatch: pytest.MonkeyPatch, tmp_pat
     result = voice.listen()
     assert result["ok"] is False
     assert "Vosk model" in str(result["error"])
+
+
+def test_speak_passes_the_reply_through_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+
+    def fake_popen(args: list[str], env: dict[str, str], **kwargs: object) -> None:
+        seen["env"] = env
+        seen["args"] = args
+
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    voice.speak("Hello\n  there '; calc")
+    env = seen["env"]
+    assert isinstance(env, dict)
+    assert env["LEON_SPEAK"] == "Hello there '; calc"
+    assert "calc" not in str(seen["args"])
+
+
+def test_speak_ignores_empty_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    called: list[object] = []
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: called.append(a))
+    voice.speak("   ")
+    assert called == []

@@ -80,8 +80,8 @@ def test_launch_opens_the_capsule_at_the_top_of_the_screen(monkeypatch: Any) -> 
     window, created, _ = _launch(monkeypatch)
     assert created["title"] == "LEON"
     assert str(created["url"]).endswith("index.html")
-    assert (created["width"], created["height"]) == (217, 50)
-    assert (created["x"], created["y"]) == ((1366 - 217) // 2, 0)
+    assert (created["width"], created["height"]) == (225, 56)
+    assert (created["x"], created["y"]) == ((1366 - 225) // 2, 0)
     assert created["frameless"] is True
     assert created["on_top"] is True
     assert created["transparent"] is True
@@ -99,8 +99,8 @@ def test_clicking_the_dock_resizes_the_window_to_the_open_panel(monkeypatch: Any
     assert window.size == (470, 170)
     assert window.pos == ((1366 - 470) // 2, 0)
     api.set_open(False)
-    assert window.size == (217, 50)
-    assert window.pos == ((1366 - 217) // 2, 0)
+    assert window.size == (225, 56)
+    assert window.pos == ((1366 - 225) // 2, 0)
 
 
 def test_the_bridge_the_page_calls_is_the_one_python_exposes(monkeypatch: Any) -> None:

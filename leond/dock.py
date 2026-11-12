@@ -25,11 +25,11 @@ from leond.config import Config, config_dir
 
 UI_DIR = Path(__file__).parent / "ui"
 
-# The dock itself: a 217 x 50 glass capsule at the top of the screen when
+# The dock itself: a 225 x 56 glass capsule at the top of the screen when
 # idle. Opening it grows the same window downwards into a 470 x 170 panel,
 # which is the whole budget the tiles and the chat get.
-WIDTH = 217
-COLLAPSED_H = 50
+WIDTH = 225
+COLLAPSED_H = 56
 EXPANDED_W = 470
 EXPANDED_H = 170
 TOP_MARGIN = 0
@@ -94,6 +94,11 @@ class DockApi:
         """
         if window is not None:
             self._window = window
+            # Re-assert the collapsed size once the window is on screen: the
+            # first resize can land before the frame is laid out.
+            with contextlib.suppress(Exception):
+                if not self._open:
+                    self._resize(False)
         attention.set_hooks(self._emit, self._wait_for_answer)
         if audio.start():
             self._audit.write("dock", "audio meter", "started")
@@ -328,6 +333,7 @@ class DockApi:
             }
             self._audit.write("chat", f"{tokens} tokens", "ok")
             self._emit("done", {"cancelled": False, "text": reply, "stats": stats})
+            voice.speak(reply)
         except BrainError as exc:
             self._audit.write("chat", str(exc)[:120], "error")
             self._emit("error", str(exc))

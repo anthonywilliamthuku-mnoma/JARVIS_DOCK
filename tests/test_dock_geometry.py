@@ -9,7 +9,7 @@ from leond.dock import (
 
 
 def test_the_dock_is_exactly_the_requested_size() -> None:
-    assert (WIDTH, COLLAPSED_H) == (217, 50)
+    assert (WIDTH, COLLAPSED_H) == (225, 56)
 
 
 def test_the_open_panel_is_exactly_the_requested_size() -> None:
@@ -18,8 +18,8 @@ def test_the_open_panel_is_exactly_the_requested_size() -> None:
 
 def test_collapsed_dock_is_centred_and_flush_with_the_top() -> None:
     x, y, width, height = geometry(1366, opened=False)
-    assert (width, height) == (217, 50)
-    assert x == (1366 - 217) // 2
+    assert (width, height) == (225, 56)
+    assert x == (1366 - 225) // 2
     assert y == 0
     assert TOP_MARGIN == 0
 
