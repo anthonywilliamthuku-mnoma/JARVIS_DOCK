@@ -112,6 +112,11 @@ ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel, a calm default voice
 ELEVENLABS_TIMEOUT_S = 20.0
 
 
+def _clean_key(key: str) -> str:
+    """Strip copy-paste artefacts (whitespace, angle brackets) from an API key."""
+    return "".join(key.split()).strip("<>")
+
+
 def _speak_system(spoken: str) -> None:
     """Say text aloud with the built-in Windows voice, without blocking.
 
@@ -151,7 +156,7 @@ def _speak_elevenlabs(spoken: str) -> None:
             f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
             data=body,
             headers={
-                "xi-api-key": os.environ.get("ELEVENLABS_API_KEY", "").strip(),
+                "xi-api-key": _clean_key(os.environ.get("ELEVENLABS_API_KEY", "")),
                 "Content-Type": "application/json",
                 "Accept": "audio/mpeg",
             },
@@ -202,7 +207,7 @@ def speak(text: str) -> None:
     spoken = " ".join(text.split())[:1000]
     if not spoken:
         return
-    if os.environ.get("ELEVENLABS_API_KEY", "").strip():
+    if _clean_key(os.environ.get("ELEVENLABS_API_KEY", "")):
         thread = threading.Thread(
             target=_speak_elevenlabs, args=(spoken,), name="leon-speak", daemon=True
         )

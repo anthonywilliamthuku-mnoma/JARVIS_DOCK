@@ -205,5 +205,8 @@ uv run pytest
 - Spoken replies can use ElevenLabs (`ELEVENLABS_API_KEY` env var, optional `ELEVENLABS_VOICE_ID`;
   default voice Rachel). Any failure falls back to the built-in Windows voice, and without a key
   nothing leaves the PC. Tests: `tests/test_voice.py` (key set / unset paths).
+- TODO(leon): ElevenLabs live check returns HTTP 402 (account out of credits,
+  key itself accepted). Add credits in ElevenLabs, then replies speak with the smooth
+  voice with no code change; until then the built-in voice is the fallback.
 - Verified twice through the real reply path (speech on, then off): with `speak_replies = true` `voice.speak` ran once and a PowerShell speech process was launched; with it false the reply came back and no speech process started.
 - TODO(leon): whether the audio is audible (volume, voice choice) is not verified; no one has listened.
