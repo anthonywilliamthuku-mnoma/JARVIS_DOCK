@@ -16,6 +16,7 @@ from dataclasses import dataclass
 MOD_ALT = 0x0001
 MOD_WIN = 0x0008
 VK_J = 0x4A
+VK_V = 0x56
 WM_HOTKEY = 0x0312
 WM_QUIT = 0x0012
 

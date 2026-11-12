@@ -97,9 +97,9 @@ class DockApi:
         self.toggle_speech()
 
     def _on_listen_hotkey(self) -> None:
-        """Win + J: open the dock and start listening for a voice command."""
+        """Win + Alt + V: open the dock and start listening for a voice command."""
         self._resize(True)
-        self._audit.write("voice", "hotkey Win+J", "listening")
+        self._audit.write("voice", "hotkey Win+Alt+V", "listening")
         self._emit("listen", True)
 
     # -- the faces, the pointer and the ping ---------------------------------
@@ -123,7 +123,12 @@ class DockApi:
         if self._hotkeys is None:
             self._hotkeys = hotkey.Hotkeys(
                 [
-                    hotkey.Binding("Win+J", hotkey.MOD_WIN, hotkey.VK_J, self._on_listen_hotkey),
+                    hotkey.Binding(
+                        "Win+Alt+V",
+                        hotkey.MOD_WIN | hotkey.MOD_ALT,
+                        hotkey.VK_V,
+                        self._on_listen_hotkey,
+                    ),
                     hotkey.Binding(
                         "Win+Alt+J",
                         hotkey.MOD_WIN | hotkey.MOD_ALT,
