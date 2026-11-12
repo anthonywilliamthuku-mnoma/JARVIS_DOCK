@@ -202,5 +202,8 @@ uv run pytest
 - Replies are now spoken aloud through Windows' built-in speech (`voice.speak`, System.Speech via PowerShell, no new dependency, runs in the background).
 - Root cause of the 201 x 100 / 209 x 100 sizes: pywebview's default `min_size` is (200, 100) and the WinForms backend applies it as MinimumSize. `create_window` now passes `min_size=(WIDTH, COLLAPSED_H)`.
 - Measured live: window 217 x 50 at x=574, y=0 (matches the log). Screenshot `artifacts/island.png` is 217 x 50.
+- Spoken replies can use ElevenLabs (`ELEVENLABS_API_KEY` env var, optional `ELEVENLABS_VOICE_ID`;
+  default voice Rachel). Any failure falls back to the built-in Windows voice, and without a key
+  nothing leaves the PC. Tests: `tests/test_voice.py` (key set / unset paths).
 - Verified twice through the real reply path (speech on, then off): with `speak_replies = true` `voice.speak` ran once and a PowerShell speech process was launched; with it false the reply came back and no speech process started.
 - TODO(leon): whether the audio is audible (volume, voice choice) is not verified; no one has listened.

@@ -12,12 +12,17 @@ string instead of raising, so the dock keeps running.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import os
 import struct
 import subprocess
+import tempfile
+import threading
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 RATE = 16_000
@@ -103,16 +108,17 @@ def transcribe(pcm: bytes) -> str:
     return str(result.get("text", "")).strip()
 
 
-def speak(text: str) -> None:
-    """Say a reply aloud with the Windows speech voice, without blocking.
+ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel, a calm default voice
+ELEVENLABS_TIMEOUT_S = 20.0
+
+
+def _speak_system(spoken: str) -> None:
+    """Say text aloud with the built-in Windows voice, without blocking.
 
     Uses the built-in System.Speech synthesiser, so nothing is installed and
     nothing leaves the PC. The text is passed through an environment variable,
     never spliced into the command, so reply text cannot inject PowerShell.
     """
-    spoken = " ".join(text.split())[:1000]
-    if not spoken:
-        return
     env = {**os.environ, "LEON_SPEAK": spoken}
     script = (
         "Add-Type -AssemblyName System.Speech; "
@@ -127,6 +133,82 @@ def speak(text: str) -> None:
         )
     except OSError:
         return
+
+
+def _speak_elevenlabs(spoken: str) -> None:
+    """Fetch ElevenLabs audio for the text and play it, else fall back.
+
+    Runs on its own thread because the network call takes a moment. Any
+    failure (no network, bad key, bad response) falls back to the built-in
+    Windows voice so a reply is still heard. The API key is read only from
+    the ``ELEVENLABS_API_KEY`` environment variable and is never logged.
+    """
+    path = ""
+    try:
+        voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "").strip() or ELEVENLABS_VOICE_ID
+        body = json.dumps({"text": spoken, "model_id": "eleven_multilingual_v2"}).encode("utf-8")
+        request = urllib.request.Request(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+            data=body,
+            headers={
+                "xi-api-key": os.environ.get("ELEVENLABS_API_KEY", "").strip(),
+                "Content-Type": "application/json",
+                "Accept": "audio/mpeg",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=ELEVENLABS_TIMEOUT_S) as response:
+            audio = response.read()
+        if not audio:
+            raise ValueError("empty audio response")
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as handle:
+            handle.write(audio)
+            path = handle.name
+        env = {**os.environ, "LEON_AUDIO": path}
+        script = (
+            "Add-Type -AssemblyName presentationCore; "
+            "$m = New-Object System.Windows.Media.MediaPlayer; "
+            "$m.Open([System.Uri]$env:LEON_AUDIO); $m.Play(); "
+            "$end = (Get-Date).AddSeconds(120); "
+            "while (-not $m.NaturalDuration.HasTimeSpan -and (Get-Date) -lt $end) "
+            "{ Start-Sleep -Milliseconds 100 }; "
+            "$len = $m.NaturalDuration.TimeSpan.TotalSeconds; "
+            "if ($len -gt 0) { Start-Sleep -Seconds ($len + 0.5) } "
+            "else { Start-Sleep -Seconds 10 }; "
+            "$m.Close()"
+        )
+        subprocess.run(  # noqa: S603 - fixed program and arguments
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+            env=env,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            check=False,
+        )
+    except Exception:  # noqa: BLE001 - any failure means the built-in voice
+        _speak_system(spoken)
+    finally:
+        if path:
+            with contextlib.suppress(OSError):
+                Path(path).unlink(missing_ok=True)
+
+
+def speak(text: str) -> None:
+    """Say a reply aloud, without blocking.
+
+    Uses ElevenLabs when the ``ELEVENLABS_API_KEY`` environment variable is
+    set, otherwise the built-in Windows voice. The ElevenLabs call runs on a
+    background thread and falls back to the built-in voice on any failure,
+    so a reply is still heard.
+    """
+    spoken = " ".join(text.split())[:1000]
+    if not spoken:
+        return
+    if os.environ.get("ELEVENLABS_API_KEY", "").strip():
+        thread = threading.Thread(
+            target=_speak_elevenlabs, args=(spoken,), name="leon-speak", daemon=True
+        )
+        thread.start()
+    else:
+        _speak_system(spoken)
 
 
 def listen() -> dict[str, object]:
@@ -146,6 +228,7 @@ def listen() -> dict[str, object]:
 
 
 __all__ = [
+    "ELEVENLABS_VOICE_ID",
     "MODEL_HINT",
     "available",
     "listen",

@@ -51,3 +51,23 @@ def test_speak_ignores_empty_text(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: called.append(a))
     voice.speak("   ")
     assert called == []
+
+
+def test_speak_with_api_key_does_not_use_the_builtin_voice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called: list[object] = []
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: called.append(a))
+    voice.speak("hello there")
+    assert called == []
+
+
+def test_speak_without_api_key_uses_the_builtin_voice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called: list[object] = []
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: called.append(a))
+    voice.speak("hello there")
+    assert len(called) == 1
