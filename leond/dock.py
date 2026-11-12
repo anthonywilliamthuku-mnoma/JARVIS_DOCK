@@ -81,7 +81,7 @@ class DockApi:
         self._mood_age = 0
         self._agent_busy = False
         self._speak_replies = cfg.speak_replies
-        self._hotkey: hotkey.Hotkey | None = None
+        self._hotkeys: hotkey.Hotkeys | None = None
 
     def attach(self, window: webview.Window) -> None:
         self._window = window
@@ -93,8 +93,14 @@ class DockApi:
         self._emit("speech", self._speak_replies)
         return self._speak_replies
 
-    def _on_hotkey(self) -> None:
+    def _on_speech_hotkey(self) -> None:
         self.toggle_speech()
+
+    def _on_listen_hotkey(self) -> None:
+        """Win + J: open the dock and start listening for a voice command."""
+        self._resize(True)
+        self._audit.write("voice", "hotkey Win+J", "listening")
+        self._emit("listen", True)
 
     # -- the faces, the pointer and the ping ---------------------------------
 
@@ -114,12 +120,22 @@ class DockApi:
         attention.set_hooks(self._emit, self._wait_for_answer)
         if audio.start():
             self._audit.write("dock", "audio meter", "started")
-        if self._hotkey is None:
-            self._hotkey = hotkey.Hotkey(self._on_hotkey)
-            if self._hotkey.start():
-                self._audit.write("dock", "hotkey Win+Alt+J", "registered")
-            else:
-                self._audit.write("dock", "hotkey Win+Alt+J", "unavailable")
+        if self._hotkeys is None:
+            self._hotkeys = hotkey.Hotkeys(
+                [
+                    hotkey.Binding("Win+J", hotkey.MOD_WIN, hotkey.VK_J, self._on_listen_hotkey),
+                    hotkey.Binding(
+                        "Win+Alt+J",
+                        hotkey.MOD_WIN | hotkey.MOD_ALT,
+                        hotkey.VK_J,
+                        self._on_speech_hotkey,
+                    ),
+                ]
+            )
+            for name, accepted in self._hotkeys.start().items():
+                self._audit.write(
+                    "dock", f"hotkey {name}", "registered" if accepted else "unavailable"
+                )
         self._beat_thread = threading.Thread(target=self._beat, name="leon-beat", daemon=True)
         self._beat_thread.start()
 
@@ -130,8 +146,8 @@ class DockApi:
         if thread is not None and thread.is_alive():
             thread.join(timeout=2.0)
         self._beat_thread = None
-        if self._hotkey is not None:
-            self._hotkey.stop()
+        if self._hotkeys is not None:
+            self._hotkeys.stop()
         audio.stop()
 
     def attention_ack(self) -> dict[str, Any]:

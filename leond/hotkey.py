@@ -1,6 +1,6 @@
 """Global hotkeys for LEON, registered with the Windows message loop.
 
-The hotkey works while another window has focus. Registration and the message
+The hotkeys work while another window has focus. Registration and the message
 loop run on their own thread, because RegisterHotKey posts WM_HOTKEY to the
 thread that registered it.
 """
@@ -11,31 +11,41 @@ import ctypes
 import ctypes.wintypes as wt
 import threading
 from collections.abc import Callable
+from dataclasses import dataclass
 
 MOD_ALT = 0x0001
 MOD_WIN = 0x0008
 VK_J = 0x4A
 WM_HOTKEY = 0x0312
 WM_QUIT = 0x0012
-HOTKEY_ID = 1
 
 
-class Hotkey:
-    """Runs a Win + Alt + J listener on a daemon thread and calls ``action``."""
+@dataclass(frozen=True, slots=True)
+class Binding:
+    """One global shortcut and what it does."""
 
-    def __init__(self, action: Callable[[], None]) -> None:
-        self._action = action
+    name: str
+    mods: int
+    vk: int
+    action: Callable[[], None]
+
+
+class Hotkeys:
+    """Runs a set of shortcuts on a daemon thread and calls their actions."""
+
+    def __init__(self, bindings: list[Binding]) -> None:
+        self._bindings = {index: binding for index, binding in enumerate(bindings, start=1)}
         self._thread: threading.Thread | None = None
         self._thread_id = 0
         self._ready = threading.Event()
-        self.registered = False
+        self.registered: dict[str, bool] = {}
 
-    def start(self) -> bool:
-        """Start listening. Returns False if Windows refused the hotkey."""
-        self._thread = threading.Thread(target=self._loop, name="leon-hotkey", daemon=True)
+    def start(self) -> dict[str, bool]:
+        """Start listening. Maps each name to whether Windows accepted it."""
+        self._thread = threading.Thread(target=self._loop, name="leon-hotkeys", daemon=True)
         self._thread.start()
         self._ready.wait(timeout=2.0)
-        return self.registered
+        return dict(self.registered)
 
     def stop(self) -> None:
         """Stop the listener and wait for its thread to exit."""
@@ -49,14 +59,19 @@ class Hotkey:
     def _loop(self) -> None:
         user32 = ctypes.windll.user32
         self._thread_id = ctypes.windll.kernel32.GetCurrentThreadId()
-        self.registered = bool(user32.RegisterHotKey(None, HOTKEY_ID, MOD_WIN | MOD_ALT, VK_J))
+        for hotkey_id, binding in self._bindings.items():
+            ok = bool(user32.RegisterHotKey(None, hotkey_id, binding.mods, binding.vk))
+            self.registered[binding.name] = ok
         self._ready.set()
-        if not self.registered:
+        if not any(self.registered.values()):
             return
         msg = wt.MSG()
         try:
             while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
-                if msg.message == WM_HOTKEY and msg.wParam == HOTKEY_ID:
-                    self._action()
+                if msg.message == WM_HOTKEY:
+                    pressed = self._bindings.get(int(msg.wParam))
+                    if pressed is not None:
+                        pressed.action()
         finally:
-            user32.UnregisterHotKey(None, HOTKEY_ID)
+            for hotkey_id in self._bindings:
+                user32.UnregisterHotKey(None, hotkey_id)

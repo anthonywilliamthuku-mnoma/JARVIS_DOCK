@@ -141,9 +141,11 @@ Single source of truth for LEON. Re-read at the start of every session.
   but needs about 180 s for 8 tokens on this CPU (D-009).
 
 ## Known gaps
-- Spoken replies can be toggled with `Win+Alt+J` (default on, or set `speak_replies = false` in config).
-  The hotkey is registered through Win32 `RegisterHotKey`; `Win+J` alone was already taken on this PC.
-- TODO(leon): pressing `Win+Alt+J` on the running dock has not been tried; only its registration is verified.
+- Two global hotkeys via Win32 `RegisterHotKey`: `Win+Alt+J` toggles spoken replies (registers), and
+  `Win+J` opens the dock and starts the mic. `Win+J` itself reports `unavailable` because another app on
+  this PC owns it; LEON retries the registration on every start and will claim it once freed.
+- TODO(leon): pressing either hotkey on the running dock has not been tried; only registration is verified.
+- TODO(leon): the app holding `Win+J` is not identified, so the mic hotkey does nothing until it is freed.
 - No tray icon yet.
 - The dock's native transparency and hover-to-open were verified in a browser,
   not yet on the Windows desktop: the first `uv run leon` on the PC is the real

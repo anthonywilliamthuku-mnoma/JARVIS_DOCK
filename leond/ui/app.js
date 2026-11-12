@@ -180,6 +180,10 @@ window.leon = {
     el.state.textContent = text;
   },
 
+  listen() {
+    startListening();
+  },
+
   speech(on) {
     el.state.textContent = on ? "spoken replies on" : "spoken replies off";
   },
@@ -279,7 +283,7 @@ el.form.addEventListener("submit", (event) => {
 
 // Push to talk: one utterance is transcribed into the box for review, then the
 // user presses Send like any typed message.
-el.mic.addEventListener("click", async () => {
+async function startListening() {
   const call = api();
   if (!call || busy || el.mic.disabled) return;
   el.mic.disabled = true;
@@ -301,7 +305,9 @@ el.mic.addEventListener("click", async () => {
     el.mic.disabled = false;
     el.mic.classList.remove("listening");
   }
-});
+}
+
+el.mic.addEventListener("click", startListening);
 
 el.chips?.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-say]");
