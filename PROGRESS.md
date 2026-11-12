@@ -187,7 +187,8 @@ uv run pytest
 
 ## Dock size and spoken replies
 
-- Collapsed island set to 225 x 56 (was 217 x 50); pill CSS and tests follow.
+- Collapsed island is 217 x 50 again (the 225 x 56 step was reverted); pill CSS and tests follow.
 - Replies are now spoken aloud through Windows' built-in speech (`voice.speak`, System.Speech via PowerShell, no new dependency, runs in the background).
-- TODO(leon): the live window still did not measure at 225 x 56 after restart (it measured 209 x 100 before the re-assert in `wake`; 470 x 170 when expanded). Re-check the collapsed size on screen.
+- Root cause of the 201 x 100 / 209 x 100 sizes: pywebview's default `min_size` is (200, 100) and the WinForms backend applies it as MinimumSize. `create_window` now passes `min_size=(WIDTH, COLLAPSED_H)`.
+- Measured live: window 217 x 50 at x=574, y=0 (matches the log). Screenshot `artifacts/island.png` is 217 x 50.
 - TODO(leon): spoken output is untested by ear; the reply path calls `voice.speak` after `done`.
