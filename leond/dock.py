@@ -402,7 +402,7 @@ def run(cfg: Config) -> int:
         y=y,
         min_size=(WIDTH, COLLAPSED_H),
         frameless=True,
-        easy_drag=True,
+        easy_drag=False,
         on_top=True,
         transparent=True,
         background_color="#000000",

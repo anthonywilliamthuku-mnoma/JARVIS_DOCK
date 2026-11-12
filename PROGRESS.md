@@ -146,7 +146,12 @@ Single source of truth for LEON. Re-read at the start of every session.
 - `Win+J` and `Win+Alt+M` are already owned by other apps on this PC (error 1409), so they are not used.
 - Pressing `Win+Alt+V` on the running dock was tested: the dock expanded to 470 x 170 and the audit logged
   `voice | hotkey Win+Alt+V | listening`.
-- TODO(leon): pressing `Win+Alt+J` has not been tried; only its registration is verified.
+- Pressed `Win+Alt+J` on the running dock: the audit logged `voice | spoken replies | off`, then a
+  second press logged `on`. The toggle works by key; speech is left ON.
+- The dock is pinned: `easy_drag=False`, so it stays centred at the top edge (217 x 50 at x=574, y=0
+  on 1366 x 768) and cannot be dragged away.
+- The mic now sends by itself: `startListening()` calls `send()` after the transcript lands in the
+  composer, so `Win+Alt+V` then saying "open Notepad" runs the command with no second click.
 - No tray icon yet.
 - The dock's native transparency and hover-to-open were verified in a browser,
   not yet on the Windows desktop: the first `uv run leon` on the PC is the real

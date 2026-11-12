@@ -281,8 +281,8 @@ el.form.addEventListener("submit", (event) => {
   send();
 });
 
-// Push to talk: one utterance is transcribed into the box for review, then the
-// user presses Send like any typed message.
+// Push to talk: one utterance is transcribed and sent straight to LEON, so a
+// spoken command acts without a second click.
 async function startListening() {
   const call = api();
   if (!call || busy || el.mic.disabled) return;
@@ -293,6 +293,7 @@ async function startListening() {
     const result = await call.listen();
     if (result && result.ok) {
       el.input.value = result.text;
+      send();
       resize();
       el.input.focus();
       el.stats.textContent = "heard you";
