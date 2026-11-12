@@ -17,7 +17,7 @@ from typing import Any
 
 import webview
 
-from leond import __version__, attention, audio, cursor, inbox, media, mood, tools, voice
+from leond import __version__, attention, audio, cursor, hotkey, inbox, media, mood, tools, voice
 from leond.agent import Agent, Hooks
 from leond.audit import AuditLog
 from leond.brain import Brain, BrainError, Message
@@ -80,9 +80,21 @@ class DockApi:
         self._last_mood: mood.Mood | None = None
         self._mood_age = 0
         self._agent_busy = False
+        self._speak_replies = cfg.speak_replies
+        self._hotkey: hotkey.Hotkey | None = None
 
     def attach(self, window: webview.Window) -> None:
         self._window = window
+
+    def toggle_speech(self) -> bool:
+        """Turn spoken replies on or off. Returns the new state."""
+        self._speak_replies = not self._speak_replies
+        self._audit.write("voice", "spoken replies", "on" if self._speak_replies else "off")
+        self._emit("speech", self._speak_replies)
+        return self._speak_replies
+
+    def _on_hotkey(self) -> None:
+        self.toggle_speech()
 
     # -- the faces, the pointer and the ping ---------------------------------
 
@@ -102,6 +114,12 @@ class DockApi:
         attention.set_hooks(self._emit, self._wait_for_answer)
         if audio.start():
             self._audit.write("dock", "audio meter", "started")
+        if self._hotkey is None:
+            self._hotkey = hotkey.Hotkey(self._on_hotkey)
+            if self._hotkey.start():
+                self._audit.write("dock", "hotkey Win+Alt+J", "registered")
+            else:
+                self._audit.write("dock", "hotkey Win+Alt+J", "unavailable")
         self._beat_thread = threading.Thread(target=self._beat, name="leon-beat", daemon=True)
         self._beat_thread.start()
 
@@ -112,6 +130,8 @@ class DockApi:
         if thread is not None and thread.is_alive():
             thread.join(timeout=2.0)
         self._beat_thread = None
+        if self._hotkey is not None:
+            self._hotkey.stop()
         audio.stop()
 
     def attention_ack(self) -> dict[str, Any]:
@@ -333,7 +353,8 @@ class DockApi:
             }
             self._audit.write("chat", f"{tokens} tokens", "ok")
             self._emit("done", {"cancelled": False, "text": reply, "stats": stats})
-            voice.speak(reply)
+            if self._speak_replies:
+                voice.speak(reply)
         except BrainError as exc:
             self._audit.write("chat", str(exc)[:120], "error")
             self._emit("error", str(exc))

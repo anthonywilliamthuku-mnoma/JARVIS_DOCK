@@ -141,7 +141,10 @@ Single source of truth for LEON. Re-read at the start of every session.
   but needs about 180 s for 8 tokens on this CPU (D-009).
 
 ## Known gaps
-- No tray icon and no global hotkey yet.
+- Spoken replies can be toggled with `Win+Alt+J` (default on, or set `speak_replies = false` in config).
+  The hotkey is registered through Win32 `RegisterHotKey`; `Win+J` alone was already taken on this PC.
+- TODO(leon): pressing `Win+Alt+J` on the running dock has not been tried; only its registration is verified.
+- No tray icon yet.
 - The dock's native transparency and hover-to-open were verified in a browser,
   not yet on the Windows desktop: the first `uv run leon` on the PC is the real
   test. If transparency misbehaves, set `transparent=False` in `leond/dock.py`

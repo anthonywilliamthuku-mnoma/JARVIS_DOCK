@@ -21,6 +21,13 @@ def test_file_values_override_defaults(tmp_path: Path) -> None:
     assert cfg.temperature == pytest.approx(0.1)
 
 
+def test_spoken_replies_default_on_and_can_be_turned_off(tmp_path: Path) -> None:
+    assert config.load(Path("does-not-exist.toml")).speak_replies is True
+    path = tmp_path / "config.toml"
+    path.write_text("speak_replies = false\n", encoding="utf-8")
+    assert config.load(path).speak_replies is False
+
+
 def test_environment_beats_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     path = tmp_path / "config.toml"
     path.write_text('model = "from-file"\n', encoding="utf-8")

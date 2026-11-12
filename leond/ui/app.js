@@ -180,6 +180,10 @@ window.leon = {
     el.state.textContent = text;
   },
 
+  speech(on) {
+    el.state.textContent = on ? "spoken replies on" : "spoken replies off";
+  },
+
   done(payload) {
     if (current) {
       current.classList.remove("caret");

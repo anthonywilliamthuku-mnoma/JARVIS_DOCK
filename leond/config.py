@@ -44,6 +44,7 @@ class Config:
     temperature: float = 0.4
     timeout_s: float = 300.0
     on_top: bool = True
+    speak_replies: bool = True
     width: int = 420
     height: int = 620
     accent: str = "#7C5CFF"
@@ -118,6 +119,10 @@ def load(path: Path | None = None) -> Config:
     if isinstance(on_top, bool):
         cfg = replace(cfg, on_top=on_top)
 
+    speak_replies = raw.get("speak_replies")
+    if isinstance(speak_replies, bool):
+        cfg = replace(cfg, speak_replies=speak_replies)
+
     if "context" in raw:
         cfg = replace(cfg, context=_as_int(raw["context"], "context"))
     if "temperature" in raw:
@@ -163,6 +168,7 @@ def save_template(path: Path | None = None) -> Path:
         f"context = {cfg.context}\n"
         f"temperature = {cfg.temperature}\n"
         f"on_top = {'true' if cfg.on_top else 'false'}\n"
+        f"speak_replies = {'true' if cfg.speak_replies else 'false'}\n"
         f'accent = "{cfg.accent}"\n',
         encoding="utf-8",
     )
