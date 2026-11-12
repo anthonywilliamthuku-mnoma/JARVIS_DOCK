@@ -12,7 +12,7 @@
   --ink: #ececf4;
   --dim: #9a9aad;
   --bubble: rgba(255, 255, 255, 0.05);
-  --capsule: 21.5px; /* half of the 43 px dock height: a true capsule */
+  --capsule: 25px; /* half of the 50 px dock height: a true capsule */
 }
 
 * {
@@ -52,14 +52,14 @@ body.open .shell {
   border-radius: 14px;
 }
 
-/* the pill: exactly the dock window, 223 x 43 ------------------------------ */
+/* the pill: exactly the dock window, 217 x 50 ------------------------------ */
 
 .pill {
   display: flex;
   align-items: center;
   gap: 7px;
   flex: none;
-  height: 41px; /* 43 minus the 1 px rim top and bottom */
+  height: 48px; /* 50 minus the 1 px rim top and bottom */
   padding: 0 6px 0 14px;
   cursor: pointer;
 }

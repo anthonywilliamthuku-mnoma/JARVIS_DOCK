@@ -164,3 +164,11 @@ uv run ruff format --check .
 uv run mypy
 uv run pytest
 ```
+
+## Round: agent acts, island size, research
+
+- Agent acts: `config.py` system prompt no longer says LEON cannot change the PC; it calls skills directly and relies on Allow cards. Not yet tested against a live request.
+- Island size: collapsed dock is now 217 x 50 (`dock.py`, `style.css`); geometry tests updated. Dock launched at 217x50 on the PC.
+- Lyrics: browser playback reports a session, but the "(1) Instagram" tab has no artist, so no lyric lookup. TODO(leon): retest with a song playing and its .lrc saved.
+- Voice commands: TODO(leon). Research: Vosk (Apache-2.0, offline, Windows wheel) is the candidate. Not integrated.
+- Phone Link: TODO(leon). No public API. Notification integration is a Limited Access Feature, approval by email to Microsoft. SMS requires Windows.Devices.Sms or a Phone Link UI path. Not integrated.
