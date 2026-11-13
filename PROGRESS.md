@@ -210,3 +210,9 @@ uv run pytest
   voice with no code change; until then the built-in voice is the fallback.
 - Verified twice through the real reply path (speech on, then off): with `speak_replies = true` `voice.speak` ran once and a PowerShell speech process was launched; with it false the reply came back and no speech process started.
 - TODO(leon): whether the audio is audible (volume, voice choice) is not verified; no one has listened.
+- Dock appearance update: removed the shell's white rim and inset highlight; hid the idle `ready` label and arrow; kept hover-to-open, clock and activity pip; moved the sole face to the top-right beside LEON. Native window restarted and measured 217 x 50 at (574, 0). Visual corner appearance still needs user confirmation.
+
+- Fenn 0.5.0 update: Pomodoro presets and stopwatch laps in the Timer tile; long media titles glide like Fenn's; dock geometry unchanged at 217 x 50 collapsed and 470 x 170 open.
+- Shazam-style Identify tile: captures 10 seconds from the Windows speaker/loopback output and sends it to AudD. Set AUDD_API_TOKEN in the Windows user environment; without it the tile explains what is missing. Live identification still needs a real token and a playing song.
+- Optional PiP preview tile: captures the front window at low frame rate for browser/player videos. This is a preview frame, not Windows moving the video element into the island; true PiP from another app would need browser/player cooperation or a native capture pipeline.
+- High-modding surface: `%APPDATA%\LEON\mods` is the mod folder and `leond/mods.py` lists installed `.py` mods. Mod execution hooks are the next step, after the API is designed.

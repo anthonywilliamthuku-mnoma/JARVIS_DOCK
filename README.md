@@ -154,6 +154,8 @@ engine and written to the audit log (the log records the call, never your text).
 | Voice memo | Records the microphone to `Music\Voice memos` |
 | Screen | The front window's words, or a picture of the whole screen |
 | Media | The track Windows is playing, its buttons, and its lyric line in sync |
+| Identify | Shazam-style song ID from the speakers (AudD token required) |
+| PiP preview | Optional live preview of the front browser/player window |
 
 The Windows-only pieces ship as optional wheels that only install on Windows:
 `winrt-windows-media-control` (the media session), `winrt-windows-media-ocr`
@@ -214,6 +216,9 @@ leond/
   skills.py     what LEON can do, each with a tier and a JSON schema
   tools.py      the tile grid's backends (Nook's utilities, rebuilt)
   media.py      now playing from the Windows media session: artwork, transport,
+  shazam.py     speaker-output song identification via AudD
+  pip.py        optional front-window preview frames for video
+  mods.py       high-modding folder listing for %APPDATA%\LEON\mods
                 seek, volume, and the lyric line for this second
   lyrics.py     .lrc parsing, the line for a given second, and the file store
   mood.py       which face LEON wears, and what the island shows

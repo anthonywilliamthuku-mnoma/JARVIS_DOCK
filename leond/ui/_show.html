@@ -125,6 +125,8 @@
         { id: "voice", name: "Voice memo", glyph: "●", size: "small", blurb: "Record the microphone", badge: "" },
         { id: "screen", name: "Screen", glyph: "◫", size: "small", blurb: "The words in front", badge: "" },
         { id: "media", name: "Media", glyph: "♪", size: "small", blurb: "Now playing, with lyrics", badge: "" },
+        { id: "shazam", name: "Identify", glyph: "♫", size: "small", blurb: "Identify the song on the speakers", badge: "" },
+        { id: "pip", name: "PiP preview", glyph: "▣", size: "small", blurb: "Small live preview of the front video", badge: "" },
       ];
 
       const TRACK = {
@@ -205,6 +207,8 @@
             return { ok: true };
           },
           async act_tool(id, action) {
+            if (id === "shazam") return { ok: true, title: "The Less I Know the Better", artist: "Tame Impala", album: "Currents", url: "" };
+            if (id === "pip") return { ok: true, data_url: ART };
             if (id === "media" && action === "lines")
               return {
                 ok: true,
@@ -239,7 +243,7 @@
         win.leon.eyes({ x: -40, y: 120 });
 
         const moods = {
-          capsule: { mood: "calm", mode: "face", note: "ready", held: 0 },
+          capsule: { mood: "calm", mode: "face", note: "", held: 0 },
           wave: { mood: "listen", mode: "wave", note: "listening to the PC", held: 0 },
           held: { mood: "glad", mode: "files", note: "2 files held", held: 2 },
           glow: { mood: "alert", mode: "glow", note: "asking for you", held: 0 },
@@ -249,7 +253,7 @@
           win.leon.level(kind === "wave" ? 0.72 : 0.15);
           if (kind === "glow") win.leon.attention({ reason: "your class is starting", beats: [0, 380, 760] });
         } else {
-          win.leon.mood({ mood: "calm", mode: "face", note: "ready", held: 0 });
+          win.leon.mood({ mood: "calm", mode: "face", note: "", held: 0 });
         }
 
         if (kind === "chat" || kind === "ask") {
@@ -268,7 +272,7 @@
             text: "",
             stats: { seconds: 1.8, first_ms: 182, tokens: 24, per_second: 14.2 },
           });
-          doc.getElementById("state").textContent = "ready";
+          doc.getElementById("state").textContent = "";
           const thread = doc.getElementById("thread");
           thread.scrollTop = thread.scrollHeight;
         }

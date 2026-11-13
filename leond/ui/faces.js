@@ -188,13 +188,12 @@
   const shell = document.getElementById("shell");
   if (!lane || !dot) return;
 
-  const island = Faces(lane, { size: 17, count: 1, wander: 3.5, dot });
+  const cornerFace = corner ? Faces(corner, { size: 20, count: 1, wander: 1.4 }) : null;
   const wave = Wave(lane, { bars: 5, dot });
   const note = document.createElement("span");
   note.className = "note";
   note.textContent = "♪";
   lane.insertBefore(note, dot);
-  const cornerFace = corner ? Faces(corner, { size: 24, count: 1, wander: 1.4 }) : null;
 
   let beatTimers = [];
   let answered = false;
@@ -204,7 +203,6 @@
     const mode = (payload && payload.mode) || "face";
     document.body.dataset.mood = mood;
     document.body.dataset.mode = mode;
-    island.set(mood);
     cornerFace?.set(mood);
     lane.title = (payload && payload.note) || "";
     if (held) held.hidden = !(payload && payload.held);
@@ -222,7 +220,6 @@
 
     eyes(point) {
       if (!point) return;
-      island.eyes(point.x, point.y);
       cornerFace?.eyes(point.x, point.y);
     },
 

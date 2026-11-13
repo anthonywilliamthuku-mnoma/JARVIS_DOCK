@@ -20,7 +20,6 @@ const el = {
   state: document.getElementById("state"),
   clock: document.getElementById("clock"),
   dot: document.getElementById("dot"),
-  toggle: document.getElementById("toggle"),
   panel: document.getElementById("panel"),
   approval: document.getElementById("approval"),
   chips: document.getElementById("chips"),
@@ -100,14 +99,7 @@ el.pill.addEventListener("mouseleave", () => {
 });
 el.shell.addEventListener("mouseenter", () => clearTimeout(timer));
 el.shell.addEventListener("mouseleave", hoverClose);
-el.pill.addEventListener("click", (event) => {
-  if (event.target === el.toggle) return;
-  togglePin();
-});
-el.toggle.addEventListener("click", (event) => {
-  event.stopPropagation();
-  togglePin();
-});
+el.pill.addEventListener("click", togglePin);
 
 /* Touching anything inside the open panel means the user is using it, so the
    dock stays out of the way until Escape. */
@@ -198,7 +190,7 @@ window.leon = {
     }
     current = null;
     setBusy(false);
-    el.state.textContent = "ready";
+    el.state.textContent = "";
     if (payload && payload.cancelled) {
       el.stats.textContent = "stopped";
     } else if (payload && payload.stats) {
@@ -215,7 +207,7 @@ window.leon = {
     }
     addTurn("leon error", message);
     setBusy(false);
-    el.state.textContent = "ready";
+    el.state.textContent = "";
     el.stats.textContent = "could not answer";
   },
 
@@ -503,9 +495,11 @@ const RENDERERS = {
 
   timer(body) {
     const readout = h("div", { className: "readout" }, "00:00");
+    const laps = h("div", { className: "list" });
     let left = 0;
     let running = null;
     let elapsed = 0;
+    let mode = "timer";
     const paint = () => {
       const value = left > 0 ? left : elapsed;
       const minutes = String(Math.floor(value / 60)).padStart(2, "0");
@@ -518,10 +512,12 @@ const RENDERERS = {
       if (TOOLS.poll) clearInterval(TOOLS.poll);
       TOOLS.poll = null;
     };
-    const startCountdown = (minutes) => {
+    const startCountdown = (minutes, nextMode = "timer") => {
+      mode = nextMode;
       stop();
       left = minutes * 60;
       elapsed = 0;
+      laps.replaceChildren();
       paint();
       running = setInterval(() => {
         left = Math.max(0, left - 1);
@@ -529,36 +525,95 @@ const RENDERERS = {
         if (left === 0) {
           stop();
           run("timer", "beep");
-          readout.textContent = "time";
+          readout.textContent = mode === "pomodoro" ? "focus done" : "time";
         }
       }, 1000);
       TOOLS.poll = running;
     };
     const startStopwatch = () => {
+      mode = "stopwatch";
       stop();
       left = 0;
+      elapsed = 0;
+      laps.replaceChildren();
       running = setInterval(() => {
         elapsed += 1;
         paint();
       }, 1000);
       TOOLS.poll = running;
     };
+    const lap = () => {
+      if (mode !== "stopwatch") return;
+      const minutes = String(Math.floor(elapsed / 60)).padStart(2, "0");
+      const seconds = String(elapsed % 60).padStart(2, "0");
+      laps.append(h("div", { className: "item" }, h("span", { className: "dim" }, "lap"), h("span", { className: "grow" }, `${minutes}:${seconds}`)));
+    };
     body.append(
       readout,
       h(
         "div",
         { className: "toolrow" },
+        button("25 min", () => startCountdown(25, "pomodoro")),
+        button("5 min", () => startCountdown(5, "pomodoro")),
+        button("15 min", () => startCountdown(15, "pomodoro")),
         button("1 min", () => startCountdown(1)),
-        button("5 min", () => startCountdown(5)),
-        button("25 min", () => startCountdown(25)),
         button("Stopwatch", startStopwatch),
+        button("Lap", lap),
         button("Stop", () => {
           stop();
           paint();
         }, "primary"),
       ),
-      hint("Runs in the page; Python only makes the sound at zero."),
+      laps,
+      hint("Pomodoro and laps run in the page; Python only makes the sound."),
     );
+  },
+
+  shazam(body) {
+    const result = h("div", { className: "identify" });
+    const status = hint("Press identify while a song is playing. LEON listens to the speakers for 10 seconds.");
+    const find = async () => {
+      status.textContent = "Listening to the speakers…";
+      const song = await run("shazam", "identify", "10");
+      result.replaceChildren();
+      if (!song.ok) {
+        status.textContent = song.error;
+        return;
+      }
+      status.textContent = "";
+      result.append(
+        h("div", { className: "readout" }, song.title),
+        h("p", {}, `${song.artist}${song.album ? " · " + song.album : ""}`),
+        song.url ? h("a", { href: song.url, target: "_blank", rel: "noreferrer" }, "Open the song") : hint("No link was returned."),
+      );
+    };
+    body.append(button("Identify song", find, "primary act"), status, result);
+  },
+
+  pip(body) {
+    const frame = h("img", { className: "pipframe", alt: "Preview of the front window" });
+    const status = hint("Optional PiP: a small live preview of the front browser or player window. It is not the video element itself.");
+    frame.hidden = true;
+    let polling = false;
+    const once = async () => {
+      if (polling) return;
+      polling = true;
+      try {
+        const shot = await run("pip", "frame");
+        if (shot.ok && shot.data_url) {
+          frame.src = shot.data_url;
+          frame.hidden = false;
+          status.textContent = "Previewing the front window.";
+        } else {
+          status.textContent = shot.error || "No preview frame.";
+        }
+      } finally {
+        polling = false;
+      }
+    };
+    body.append(frame, h("div", { className: "toolrow" }, button("Refresh preview", once, "primary act")), status);
+    once();
+    TOOLS.poll = setInterval(once, 1200);
   },
 
   calc(body) {

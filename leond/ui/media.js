@@ -92,7 +92,10 @@ RENDERERS.media = function mediaView(body, payload) {
     }
     const track = data.track;
     const playing = Boolean(data.playing);
-    title.textContent = track && track.title ? track.title : "Nothing playing";
+    const trackTitle = track && track.title ? track.title : "Nothing playing";
+    title.textContent = trackTitle;
+    title.title = trackTitle;
+    title.classList.toggle("glide", trackTitle.length > 28 && playing);
     sub.textContent = track ? [track.artist, track.album].filter(Boolean).join(" · ") : "";
     play.textContent = playing ? "⏸" : "▶";
     note.textContent = track ? "" : "Start something in your player, then reopen this tile.";

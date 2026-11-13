@@ -8,7 +8,6 @@
   --glass-top: rgba(26, 26, 38, 0.88);
   --glass-bottom: rgba(11, 11, 18, 0.93);
   --rim: rgba(255, 255, 255, 0.11);
-  --highlight: rgba(255, 255, 255, 0.16);
   --ink: #ececf4;
   --dim: #9a9aad;
   --bubble: rgba(255, 255, 255, 0.05);
@@ -37,14 +36,10 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--rim);
+  border: 0;
   border-radius: var(--capsule);
-  background:
-    radial-gradient(120% 60% at 50% 0%, rgba(255, 255, 255, 0.07), transparent 60%),
-    linear-gradient(180deg, var(--glass-top), var(--glass-bottom));
-  box-shadow:
-    inset 0 1px 0 var(--highlight),
-    0 4px 14px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(180deg, var(--glass-top), var(--glass-bottom));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   transition: border-radius 140ms ease-out;
 }
 
@@ -59,8 +54,8 @@ body.open .shell {
   align-items: center;
   gap: 7px;
   flex: none;
-  height: 48px; /* 50 minus the 1 px rim top and bottom */
-  padding: 0 6px 0 14px;
+  height: 50px;
+  padding: 0 8px 0 14px;
   cursor: pointer;
 }
 
@@ -137,10 +132,6 @@ body.open .shell {
 .ghost:hover {
   background: var(--bubble);
   color: var(--ink);
-}
-
-body.open #toggle {
-  transform: rotate(180deg);
 }
 
 /* pointer swell, as the Nook pill does */
@@ -762,6 +753,40 @@ body.open .tabs {
   white-space: nowrap;
 }
 
+.track.glide {
+  animation: glide 9s ease-in-out infinite;
+}
+
+@keyframes glide {
+  0%, 18% { text-indent: 0; }
+  82%, 100% { text-indent: -42%; }
+}
+
+.identify {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.identify a {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.pipframe {
+  display: block;
+  width: 100%;
+  max-height: 82px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--rim);
+  background: #050508;
+}
+
+.pipframe[hidden] {
+  display: none;
+}
+
 .artist {
   font-size: 10px;
   color: var(--dim);
@@ -957,11 +982,6 @@ body.open .tabs {
   transform: scaleY(0.12);
 }
 
-body[data-mode="wave"] .lane .face,
-body[data-mode="lyrics"] .lane .face {
-  display: none;
-}
-
 .lane i {
   display: none;
   width: 2px;
@@ -993,20 +1013,18 @@ body[data-mode="lyrics"] .lane .note {
   bottom: 2px;
 }
 
-/* Expanded only: a round face in the top-right corner of the dock. */
+/* One face stays beside LEON at the right edge in both dock states. */
 .corner {
   position: relative;
-  flex: none;
-  width: 26px;
-  height: 26px;
-  display: none;
-}
-
-body.open .corner {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
 }
 
-body.open .corner .face {
+.corner .face {
   position: absolute;
   inset: 0;
   margin: auto;

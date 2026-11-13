@@ -29,7 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from leond import facts, inbox, media, screen, skills
+from leond import facts, inbox, media, pip, screen, shazam, skills
 from leond.config import config_dir
 from leond.policy import Tier, check
 
@@ -70,6 +70,8 @@ TOOLS: tuple[Tool, ...] = (
         Tier.ACT,
     ),
     Tool("media", "Media", "♪", "wide", "Now playing, with synced lyrics."),
+    Tool("shazam", "Identify", "♫", "small", "Identify the song on the speakers."),
+    Tool("pip", "PiP preview", "▣", "small", "Small live preview of the front video."),
 )
 
 _INDEX = {tool.id: tool for tool in TOOLS}
@@ -694,6 +696,11 @@ _NEEDS: dict[str, tuple[str, str]] = {
         "sounddevice",
         "Recording needs the microphone package. Run `uv add sounddevice` and reopen the dock.",
     ),
+    "shazam": (
+        "pyaudiowpatch",
+        "Identifying songs listens to the speakers. "
+        "Run `uv add pyaudiowpatch` and reopen the dock.",
+    ),
 }
 
 
@@ -826,6 +833,18 @@ def _act_media(action: str, arg: str) -> dict[str, Any]:
     return media.state()
 
 
+def _act_shazam(action: str, arg: str) -> dict[str, Any]:
+    try:
+        seconds = int(arg or "10")
+    except ValueError:
+        seconds = 10
+    return shazam.identify(seconds)
+
+
+def _act_pip(action: str, arg: str) -> dict[str, Any]:
+    return pip.frame()
+
+
 def _act_screen(action: str, arg: str) -> dict[str, Any]:
     """The words in the front window, or a picture of the whole screen."""
     if action == "shot":
@@ -846,6 +865,8 @@ _HANDLERS: dict[str, Any] = {
     "voice": _act_voice,
     "screen": _act_screen,
     "media": _act_media,
+    "shazam": _act_shazam,
+    "pip": _act_pip,
 }
 
 
@@ -932,6 +953,10 @@ def state(tool_id: str) -> dict[str, Any]:
         return {"ok": True, "colour": _last_colour}
     if tool_id == "media":
         return media.state()
+    if tool_id == "shazam":
+        return {"ok": True}
+    if tool_id == "pip":
+        return {"ok": True}
     if tool_id == "screen":
         held = inbox.listing()
         return {
