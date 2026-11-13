@@ -14,9 +14,20 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 MOD_ALT = 0x0001
+MOD_CONTROL = 0x0002
 MOD_WIN = 0x0008
+VK_C = 0x43
+VK_D = 0x44
+VK_G = 0x47
 VK_J = 0x4A
+VK_K = 0x4B
+VK_L = 0x4C
+VK_N = 0x4E
+VK_P = 0x50
+VK_R = 0x52
+VK_T = 0x54
 VK_V = 0x56
+VK_SPACE = 0x20
 WM_HOTKEY = 0x0312
 WM_QUIT = 0x0012
 

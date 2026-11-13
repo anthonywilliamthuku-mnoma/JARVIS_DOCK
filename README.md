@@ -251,3 +251,20 @@ Phase 0 (foundations) is complete, and Phase 1 (brain and core loop) works:
 model client, live facts, policy-gated skills with an approval card, audit log
 and the dock shell. The elevated helper (Phase 4) is still to come. See
 `PROGRESS.md` and `DECISIONS.md`.
+
+## Shortcuts
+
+Fenn-style shortcuts (registered with Windows when the dock is running):
+
+- `Ctrl+Alt+N` — pin LEON open
+- `Ctrl+Alt+T` — copy the front window's text
+- `Ctrl+Alt+P` — copy the colour under the cursor
+- `Alt+Space` — search / ask LEON
+- `Ctrl+Alt+K` — calculator
+- `Ctrl+Alt+D` — screen tools (draw fallback)
+- `Ctrl+Alt+C` — keep awake
+- `Ctrl+Alt+L` — screen tools (lens fallback)
+- `Ctrl+Alt+R` — voice memo
+- `Ctrl+Alt+G` — listen (Hey Fenn equivalent)
+
+`Ctrl+Win` is not bound because Windows does not expose a lone modifier as a registerable hotkey.

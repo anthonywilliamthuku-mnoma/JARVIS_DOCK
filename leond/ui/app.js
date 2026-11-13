@@ -180,6 +180,18 @@ window.leon = {
     el.state.textContent = on ? "spoken replies on" : "spoken replies off";
   },
 
+  focus(focus) {
+    pinned = true;
+    setOpen(true, { focus: Boolean(focus) });
+  },
+
+  tool(name) {
+    pinned = true;
+    setOpen(true);
+    showView("tools");
+    openTool(name);
+  },
+
   done(payload) {
     if (current) {
       current.classList.remove("caret");

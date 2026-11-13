@@ -8,6 +8,7 @@ skill, so the page can only call the handful of methods exposed below.
 from __future__ import annotations
 
 import contextlib
+import ctypes
 import itertools
 import json
 import threading
@@ -17,7 +18,19 @@ from typing import Any
 
 import webview
 
-from leond import __version__, attention, audio, cursor, hotkey, inbox, media, mood, tools, voice
+from leond import (
+    __version__,
+    attention,
+    audio,
+    cursor,
+    hotkey,
+    inbox,
+    media,
+    mood,
+    screen,
+    tools,
+    voice,
+)
 from leond.agent import Agent, Hooks
 from leond.audit import AuditLog
 from leond.brain import Brain, BrainError, Message
@@ -102,6 +115,83 @@ class DockApi:
         self._audit.write("voice", "hotkey Win+Alt+V", "listening")
         self._emit("listen", True)
 
+    def _open_tool_hotkey(self, name: str, tool: str) -> None:
+        self._resize(True)
+        self._audit.write("dock", f"hotkey {name}", f"open {tool}")
+        self._emit("tool", tool)
+
+    def _on_pin_hotkey(self) -> None:
+        """Ctrl + Alt + N: open LEON and keep it in front of the work."""
+        self._resize(True)
+        self._audit.write("dock", "hotkey Ctrl+Alt+N", "pinned open")
+        self._emit("focus", True)
+
+    def _on_search_hotkey(self) -> None:
+        """Alt + Space: ask LEON, which is the dock's search box."""
+        self._resize(True)
+        self._audit.write("dock", "hotkey Alt+Space", "search focused")
+        self._emit("focus", True)
+
+    def _on_copy_text_hotkey(self) -> None:
+        """Ctrl + Alt + T: copy the words in the front window."""
+        self._resize(True)
+        found = screen.text()
+        text = str(found.get("text") or "").strip()
+        if not text:
+            self._audit.write("dock", "hotkey Ctrl+Alt+T", "nothing copied")
+            self._emit("state", "nothing readable to copy")
+            return
+        tools.write_clipboard(text)
+        self._audit.write("dock", "hotkey Ctrl+Alt+T", f"copied {len(text)} chars")
+        self._emit("state", f"copied {len(text)} chars")
+
+    def _on_colour_hotkey(self) -> None:
+        """Ctrl + Alt + P: copy the colour under the cursor as hex."""
+        self._resize(True)
+        result = tools.pick_colour()
+        if result.get("ok") and isinstance(result.get("colour"), dict):
+            hex_value = str(result["colour"].get("hex") or "")
+            self._audit.write("dock", "hotkey Ctrl+Alt+P", f"copied {hex_value}")
+            self._emit("state", f"copied {hex_value}")
+        else:
+            self._audit.write("dock", "hotkey Ctrl+Alt+P", "unavailable")
+            self._emit("state", str(result.get("error") or "colour picker unavailable"))
+
+    def _on_start_hotkey(self) -> None:
+        """Ctrl + Win: open Windows Start, as Fenn's shortcut does."""
+        self._audit.write("dock", "hotkey Ctrl+Win", "start pressed")
+        with contextlib.suppress(Exception):
+            user32 = ctypes.windll.user32
+            user32.keybd_event(0x5B, 0, 0, 0)
+            user32.keybd_event(0x5B, 0, 0x0002, 0)
+
+    def _on_awake_hotkey(self) -> None:
+        """Ctrl + Alt + C: toggle keep-awake, like Fenn's Coffee."""
+        self._resize(True)
+        state = tools.state("awake")
+        awake_value = state.get("state")
+        awake_state: dict[str, Any] = awake_value if isinstance(awake_value, dict) else {}
+        result = (
+            tools.act("awake", "off") if awake_state.get("on") else tools.act("awake", "on", "60")
+        )
+        self._audit.write("dock", "hotkey Ctrl+Alt+C", "ok" if result.get("ok") else "refused")
+        message = str(result.get("message") or result.get("error") or "keep-awake updated")
+        self._emit("state", message)
+
+    def _on_voice_memo_hotkey(self) -> None:
+        """Ctrl + Alt + R: record a short voice memo."""
+        self._resize(True)
+        self._audit.write("dock", "hotkey Ctrl+Alt+R", "recording")
+        self._emit("tool", "voice")
+
+        def record() -> None:
+            result = tools.record_voice(10)
+            self._audit.write("dock", "hotkey Ctrl+Alt+R", "ok" if result.get("ok") else "failed")
+            if result.get("message"):
+                self._emit("state", str(result["message"]))
+
+        threading.Thread(target=record, name="leon-voice-memo", daemon=True).start()
+
     # -- the faces, the pointer and the ping ---------------------------------
 
     def wake(self, window: webview.Window | None = None) -> None:
@@ -134,6 +224,66 @@ class DockApi:
                         hotkey.MOD_WIN | hotkey.MOD_ALT,
                         hotkey.VK_J,
                         self._on_speech_hotkey,
+                    ),
+                    hotkey.Binding(
+                        "Ctrl+Alt+N",
+                        hotkey.MOD_CONTROL | hotkey.MOD_ALT,
+                        hotkey.VK_N,
+                        self._on_pin_hotkey,
+                    ),
+                    hotkey.Binding(
+                        "Ctrl+Alt+T",
+                        hotkey.MOD_CONTROL | hotkey.MOD_ALT,
+                        hotkey.VK_T,
+                        self._on_copy_text_hotkey,
+                    ),
+                    hotkey.Binding(
+                        "Ctrl+Alt+P",
+                        hotkey.MOD_CONTROL | hotkey.MOD_ALT,
+                        hotkey.VK_P,
+                        self._on_colour_hotkey,
+                    ),
+                    hotkey.Binding(
+                        "Alt+Space",
+                        hotkey.MOD_ALT,
+                        hotkey.VK_SPACE,
+                        self._on_search_hotkey,
+                    ),
+                    hotkey.Binding(
+                        "Ctrl+Alt+K",
+                        hotkey.MOD_CONTROL | hotkey.MOD_ALT,
+                        hotkey.VK_K,
+                        lambda: self._open_tool_hotkey("Ctrl+Alt+K", "calc"),
+                    ),
+                    hotkey.Binding(
+                        "Ctrl+Alt+D",
+                        hotkey.MOD_CONTROL | hotkey.MOD_ALT,
+                        hotkey.VK_D,
+                        lambda: self._open_tool_hotkey("Ctrl+Alt+D", "screen"),
+                    ),
+                    hotkey.Binding(
+                        "Ctrl+Alt+C",
+                        hotkey.MOD_CONTROL | hotkey.MOD_ALT,
+                        hotkey.VK_C,
+                        self._on_awake_hotkey,
+                    ),
+                    hotkey.Binding(
+                        "Ctrl+Alt+L",
+                        hotkey.MOD_CONTROL | hotkey.MOD_ALT,
+                        hotkey.VK_L,
+                        lambda: self._open_tool_hotkey("Ctrl+Alt+L", "screen"),
+                    ),
+                    hotkey.Binding(
+                        "Ctrl+Alt+R",
+                        hotkey.MOD_CONTROL | hotkey.MOD_ALT,
+                        hotkey.VK_R,
+                        self._on_voice_memo_hotkey,
+                    ),
+                    hotkey.Binding(
+                        "Ctrl+Alt+G",
+                        hotkey.MOD_CONTROL | hotkey.MOD_ALT,
+                        hotkey.VK_G,
+                        self._on_listen_hotkey,
                     ),
                 ]
             )
