@@ -168,7 +168,6 @@ def identify(seconds: int = DEFAULT_SECONDS) -> dict[str, Any]:
         fields = {
             "api_token": key,
             "return": "apple_music,spotify",
-            "audio": "clip.wav",
         }
         body, boundary = _multipart(fields, wav)
         request = urllib.request.Request(
