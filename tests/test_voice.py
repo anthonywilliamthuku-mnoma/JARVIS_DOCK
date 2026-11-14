@@ -38,6 +38,7 @@ def test_speak_passes_the_reply_through_the_environment(monkeypatch: pytest.Monk
         seen["env"] = env
         seen["args"] = args
 
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
     voice.speak("Hello\n  there '; calc")
     env = seen["env"]

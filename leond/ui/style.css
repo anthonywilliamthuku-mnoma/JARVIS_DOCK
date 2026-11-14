@@ -1,4 +1,4 @@
-/* LEON dock, recreated from Nook 0.4.2's shell (MIT): a glass capsule that
+/* LEON dock: a glass capsule that
    springs into a panel. Deliberately cheap for integrated graphics — no blur
    filters, no backdrop-filter, no grain pass, no layout animation. Only
    opacity, transform and the native window resize move. */
@@ -134,7 +134,7 @@ body.open .shell {
   color: var(--ink);
 }
 
-/* pointer swell, as the Nook pill does */
+/* pointer swell */
 .pill:hover .dot {
   transform: scale(1.15);
 }
@@ -1081,7 +1081,7 @@ body[data-attention="on"] .glow {
   }
 }
 
-/* the media player, laid out like Nook's --------------------------------- */
+/* the media player ------------------------------------------------------- */
 
 .nowbar {
   display: flex;

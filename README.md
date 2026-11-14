@@ -86,10 +86,10 @@ What it shows comes from `leond/mood.py`, in this order:
 - It stays open while a reply is streaming, while you type, and while an
   approval card is waiting — it will not fold under your hands.
 
-The shell's behaviour and look are recreated from **Nook 0.4.2** (MIT): the
-capsule-to-panel shell, hover/pin interaction, charcoal glass gradient, 1 px rim
-and top highlight, and the clock in the pill. The rendering is LEON's own
-HTML/CSS, not Nook's Rust code, so the dock stays a single Python process.
+The shell's behaviour and look are LEON's own: the capsule-to-panel shape,
+hover/pin interaction, charcoal glass gradient and the clock in the pill. The
+rendering is plain HTML/CSS over the pywebview bridge, so the dock stays a
+single Python process.
 
 ## What it does today
 
@@ -135,8 +135,8 @@ override.
 
 ## Tools: the tile grid
 
-Open the dock and switch to **Tools** for a bento grid of utilities, like
-Nook's. Every tile is a real backend action on this PC, checked by the policy
+Open the dock and switch to **Tools** for a bento grid of utilities. Every tile
+is a real backend action on this PC, checked by the policy
 engine and written to the audit log (the log records the call, never your text).
 
 | Tile | What it does |
@@ -172,7 +172,7 @@ screenshot is the last resort (D-017).
 
 ## Lyrics, in sync
 
-The Media tile is Nook's player, rebuilt: the session's artwork, track and
+The Media tile is a small player of LEON's own: the session's artwork, track and
 artist, a scrub bar with both times (click to seek), previous / play-pause /
 next, a volume slider with its number, and the lyric sheet underneath. It reads
 whatever player Windows is showing in its media flyout, asks the session for the
@@ -186,13 +186,12 @@ and LEON stores it for that track and reuses it next time.
 [00:17.90] the next one
 ```
 
-## Nook 0.4.2 parity
+## Feature coverage
 
-Nook's shell is recreated; its modules are being ported one wave at a time
-because they are written in Rust against Win32, DWM, `Windows.UI.Composition`,
-`Windows.Media.Ocr` and SMTC, which Python reaches differently or not at all.
+Each area is implemented directly against Windows through Python, WinRT and
+`ctypes`. What is done is listed as done; what is missing is listed plainly.
 
-| Nook | LEON |
+| Area | LEON |
 |---|---|
 | Pill clock, hover/pin shell, glass | Done |
 | Keep awake, timer, calculator, calendar, QR, clipboard, quick launch, colour picker, system monitor, notes | Done |
@@ -214,7 +213,7 @@ leond/
   facts.py      live Windows facts (time, place, system, disk)
   brain.py      streaming client for local OpenAI-compatible servers, with tools
   skills.py     what LEON can do, each with a tier and a JSON schema
-  tools.py      the tile grid's backends (Nook's utilities, rebuilt)
+  tools.py      the tile grid's backends
   media.py      now playing from the Windows media session: artwork, transport,
   shazam.py     speaker-output song identification via AudD
   pip.py        optional front-window preview frames for video

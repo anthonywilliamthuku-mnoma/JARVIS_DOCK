@@ -1,8 +1,7 @@
-"""The dock's tool tiles: Nook 0.4.2's utilities, rebuilt for LEON.
+"""The dock's tool tiles.
 
-Nook ships these as Rust modules drawn with egui. LEON cannot reuse that
-runtime, so each tile here is a small Python backend behind the same
-pywebview bridge the chat uses, and the page draws the grid.
+Each tile is a small Python backend behind the same pywebview bridge the chat
+uses, and the page draws the grid.
 
 Rules that keep it safe and cheap:
 
@@ -502,7 +501,7 @@ def same_month(first: datetime, other: datetime) -> bool:
 
 
 # -- clipboard --------------------------------------------------------------
-# Nook keeps clipboard history in memory only; LEON does the same.
+# Clipboard history stays in memory only.
 
 _cf_unicode = 13
 _clip_lock = threading.Lock()

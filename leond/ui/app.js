@@ -2,7 +2,7 @@
    The page never touches the network. It calls the methods Python exposes on
    window.pywebview.api, and Python calls back into window.leon.
 
-   The shell follows Nook 0.4.2 (MIT): the pill is the whole window, hovering
+   The shell: the pill is the whole window, hovering
    opens it after a short debounce, leaving folds it after a grace period, and
    a click pins it open. */
 
@@ -29,8 +29,8 @@ const el = {
   deny: document.getElementById("deny"),
 };
 
-const HOVER_OPEN_MS = 120; // Nook's hover debounce
-const HOVER_CLOSE_MS = 250; // Nook's leave grace
+const HOVER_OPEN_MS = 120; // hover debounce
+const HOVER_CLOSE_MS = 250; // leave grace
 
 let current = null; // assistant bubble being streamed
 let busy = false;
@@ -361,7 +361,7 @@ el.stop.addEventListener("click", () => {
 });
 
 /* tools ------------------------------------------------------------------
-   The grid mirrors Nook's bento: every tile is a real backend action. */
+   The grid: every tile is a real backend action. */
 
 const TOOLS = { tiles: [], page: null, poll: null };
 
@@ -501,7 +501,7 @@ const RENDERERS = {
         button("Always", () => pick(0)),
         button("Off", () => pick(null), "primary"),
       ),
-      hint("Nook's coffee tile, without the cup: Windows is told to keep the display on."),
+      hint("Windows is told to keep the display on while this is set."),
     );
   },
 
@@ -825,7 +825,7 @@ const RENDERERS = {
         }),
       ),
       list,
-      hint("Kept in memory only, like Nook's, and cleared when the dock closes."),
+      hint("Kept in memory only, and cleared when the dock closes."),
     );
   },
 

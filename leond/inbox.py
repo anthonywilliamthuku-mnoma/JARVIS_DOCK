@@ -1,9 +1,9 @@
 """Files left on the dock for LEON.
 
-Nook's island shows what the dock is holding. LEON's equivalent is an inbox
-folder: anything put in ``%APPDATA%/LEON/inbox`` counts as held, the island
-shows how many, and LEON can list them when asked. Nothing is ever deleted
-from it by the dock itself.
+The island shows what the dock is holding. LEON's inbox folder: anything put
+in ``%APPDATA%/LEON/inbox`` counts as held, the island shows how many, and
+LEON can list them when asked. Nothing is ever deleted from it by the dock
+itself.
 """
 
 from __future__ import annotations

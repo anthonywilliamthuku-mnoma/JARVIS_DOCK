@@ -14,7 +14,7 @@ Single source of truth for LEON. Re-read at the start of every session.
     five purple bars while it sounded, then back.
   - The Media tile read the session that was actually open — *BIRDS OF A FEATHER* by Billie Eilish —
     with its **real artwork** (a 234,846-byte PNG read from the session thumbnail), the scrub bar at
-    0:04 of 3:30 and the system volume at **64**, matching Nook's player.
+    0:04 of 3:30 and the system volume at **64**, matching the system's own player.
   - Screen: `BitBlt` capture works (1366 x 768 BMP in `%APPDATA%\LEON\screens`), and UI Automation
     returns the front window's title and control labels. `Windows.Media.Ocr` answers *Class not
     registered* on this PC (it needs MSIX package identity), which is why D-017 reads UIA first.
@@ -32,7 +32,7 @@ Single source of truth for LEON. Re-read at the start of every session.
   window itself still needs Windows. `leond/ui/_show.html` renders the dock in
   five states at real size against a mocked bridge.
 - **Phase 0 (foundations):** project skeleton, `pyproject.toml` (uv, ruff, mypy strict, pytest), CI workflow, `ARCHITECTURE.md`, `DECISIONS.md`, `SKILLS.md`, this file. Tagged `phase-0-done`.
-- **Dock shell (D-008, D-012):** recreated from Nook 0.4.2 as a transparent **223 x 43** glass capsule at the top centre, flush with the screen edge. Hover opens it (120 ms), leaving folds it (250 ms), a click pins it, and it grows into a **470 x 170** panel. Frameless, always on top, draggable, WebView2 through `pywebview`; no Node, no Rust, no open ports.
+- **Dock shell (D-008, D-012):** a transparent **223 x 43** glass capsule at the top centre, flush with the screen edge. Hover opens it (120 ms), leaving folds it (250 ms), a click pins it, and it grows into a **470 x 170** panel. Frameless, always on top, draggable, WebView2 through `pywebview`; no Node, no Rust, no open ports.
 - **Brain (D-009):** `leond/brain.py` streams from any local OpenAI-compatible server and understands tool calls. Default model is the small local one.
 - **Facts (D-010):** `leond/facts.py` reads the clock, time zone, region, OS build, memory and disk from Windows and injects them into every turn.
 - **Skills and approvals (D-011):** `leond/skills.py` (local_time, local_place, system_report, open_app, write_note, run_powershell) and `leond/agent.py`, which checks policy, raises an Allow / Deny card for T2+, and bounds a turn to three steps.
@@ -45,7 +45,7 @@ Single source of truth for LEON. Re-read at the start of every session.
   - "How much free disk space is left?" made the model call `system_report` and
     answer with the real figure (92.8 GB free of 232.9 GB, 73% memory in use).
 
-- **Verified on 2026-11-10 (Nook shell):**
+- **Verified on 2026-11-10 (dock shell):**
   - `pytest` now includes `tests/test_dock_geometry.py`: the collapsed dock is
     exactly 223 x 43, centred, flush with the top edge, and both states share
     one centre line (57 tests pass).
@@ -121,7 +121,7 @@ Single source of truth for LEON. Re-read at the start of every session.
 
 ## In progress
 - Phase 1 (brain and core loop) is essentially complete for a single-user dock.
-- Nook module parity: 10 of its modules are ported; see the parity table in `README.md` for the rest.
+- Tool coverage: 10 utility modules are implemented; see the tool table in `README.md` for the rest.
 
 ## Next 5 actions
 1. Wave 2 of the tools: media (SMTC) and text extraction (screen capture plus

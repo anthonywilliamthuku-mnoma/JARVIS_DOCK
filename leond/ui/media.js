@@ -1,5 +1,5 @@
-/* The media tile, rebuilt to Nook 0.4.2's player.
-   Nook's pane carries artwork, the track and artist, a scrub bar with the two
+/* The media tile.
+   The pane carries artwork, the track and artist, a scrub bar with the two
    times, the three transport buttons, a volume slider with its number and the
    lyric sheet. All of that fits the 470 x 170 panel as two stacked rows plus
    the lyrics underneath.
